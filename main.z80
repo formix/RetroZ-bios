@@ -1,0 +1,22 @@
+#target rom
+
+#code   INIT_MAIN,0
+        JP    MAIN
+
+#include "sio2.z80"
+
+
+#code MAIN
+        CALL    SIO2_INIT
+        ;LD      A,ECHO_ON
+        ;LD      (ECHO_STATE),A
+
+DO_NOTHING:
+        ;LD      A,'0'
+        ;CALL    PUTCHAR
+        ;INC     A
+        ;CP      '9'+1
+        ;JR      NZ,DO_NOTHING
+        ;LD      A,'0'
+        JR      DO_NOTHING
+#end

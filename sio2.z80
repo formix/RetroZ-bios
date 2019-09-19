@@ -1,0 +1,220 @@
+#if !defined(_SIO2_Z80)
+
+SIOA_C          EQU     $00
+SIOA_D          EQU     $01
+SIOB_C          EQU     $02
+SIOB_D          EQU     $03
+
+BUFFER_SIZE     EQU     128     ;Must be a power of 2
+ECHO_OFF        EQU     0
+ECHO_ON         EQU     1
+
+#data           HEAP,$8000
+ECHO_STATE      DEFS    1
+BUFFER_HEAD     DEFS    1
+BUFFER_LENGTH   DEFS    1
+BUFFER          DEFS    BUFFER_SIZE
+
+#code           INT_VECTOR,$000C
+                DEFW    RX_CHA_AVAILABLE
+                DEFW    SPEC_RX_CONDITION
+
+#code           _SIO2_Z80,INT_VECTOR+20
+
+SIO2_INIT:
+        ; SIOA init
+	LD      A,$00            ; write 0
+	OUT     (SIOA_C),A
+	LD      A,$18            ; reset ext/status interrupts
+	OUT     (SIOA_C),A
+
+	LD      A,$04            ; write 4
+	OUT     (SIOA_C),A
+	LD      A,$C4            ; X64, no parity, 1 stop
+	OUT     (SIOA_C),A
+
+	LD      A,$01            ; write 1
+	OUT     (SIOA_C),A
+	LD      A,$18            ; interrupt on all recv
+	OUT     (SIOA_C),A
+
+	LD      A,$03            ; write 3
+	OUT     (SIOA_C),A
+	LD      A,$E1            ; 8 bits, auto enable, rcv enab
+	OUT     (SIOA_C),A
+
+	LD      A,$05           ; write 5
+	OUT     (SIOA_C),A
+	LD      A,$EA		; dtr enable, 8 bits, tx enable, rts
+	OUT     (SIOA_C),A
+
+        ; SIOB init
+	LD      A,$00
+	OUT     (SIOB_C),A
+	LD      A,$18
+	OUT     (SIOB_C),A
+
+	LD      A,$04            ; write 4
+	OUT     (SIOB_C),A
+	LD      A,$C4            ; X64, no parity, 1 stop
+	OUT     (SIOB_C),A
+
+	LD      A,$01
+	OUT     (SIOB_C),A
+	LD      A,$18
+	OUT     (SIOB_C),A
+
+	LD      A,$02           ; write reg 2
+	OUT     (SIOB_C),A
+	LD      A,$0C           ; INTERRUPT VECTOR ADDRESS
+	OUT     (SIOB_C),A
+
+	LD      A,$03
+	OUT     (SIOB_C),A
+	LD      A,$E1
+	OUT     (SIOB_C),A
+
+	LD      A,$05
+	OUT     (SIOB_C),A
+	LD      A,$EA
+	OUT     (SIOB_C),A
+        
+        CALL    INT_INIT
+
+
+; ***** SIOA ENABLE INTERRUPTS *****
+SIOA_EI:
+        LD      A, $03          ;write into WR0: select WR3
+        OUT     (SIOA_C),A
+        LD      A,$C1           ;RX 8bits, auto enable off, RX on
+        OUT     (SIOA_C),A
+        RET
+
+
+; ***** SIOA DISABLE INTERRUPTS *****
+SIOA_DI:
+        LD      A,$03           ;write into WR0: select WR3
+        OUT     (SIOA_C),A
+        LD      A,$C0           ;RX 8bit, auto enable off, RX off
+        OUT     (SIOA_C),A
+        RET
+
+
+INT_INIT:
+        LD      A,0
+        LD      I,A             ;load I reg with zero
+        IM      2               ;interrupt mode 2
+        EI                      ;enable interrupts
+        RET
+
+
+A_RTS_OFF:
+        LD      A,$05           ;write into WR0: select WR5
+        OUT     (SIOA_C),A
+        LD      A,$E8           ;DTR active, TX 8bit, BREAK off, TX on, RTS off
+        OUT     (SIOA_C),A
+        RET
+
+
+A_RTS_ON:
+        LD      A,$05           ;write into WR0: select WR5
+        OUT     (SIOA_C),A
+        LD      A,$EA           ;DTR active, TX 8bit, BREAK off, TX on, RTS on
+        OUT     (SIOA_C),A
+        RET
+
+
+RX_CHA_AVAILABLE:
+        EX      AF,AF'          ;backup AF
+        EXX
+WAIT_RX:
+	SUB	A		;Clears A
+	OUT	(SIOA_C),A	;Select RR0
+	IN	A,(SIOA_C)	;Read RR0
+	BIT	0,A		;Check if character is available
+	JR	Z,WAIT_RX	;Character not recieved yet, check again
+
+        IN      A,(SIOA_D)      ; A holds recieved character
+        
+        ; do something with the character
+        LD      B,A                     ;Save character in B
+        LD      A,(BUFFER_HEAD)         ;Load the buffer head index
+        LD      HL,BUFFER_LENGTH
+        ADD     A,(HL)                  ;Compute the write index
+        LD      C,BUFFER_SIZE
+        DEC     C                       ;Compute the roll over mask
+        AND     C                       ;Roll over in case of overflow
+        LD      D,0
+        LD      E,A                     ;Load the write index into DE
+        LD      HL,BUFFER               
+        ADD     HL,DE                   ;Move HL into the write position
+        LD      (HL),B                  ;Write the char at the buffer tail 
+        LD      HL,BUFFER_LENGTH
+        INC     (HL)                    ;Increment the buffer length
+        LD      A,(HL)                  
+        CP      C                       ;Comp the buf size with the buf length
+        JP      NZ,RX_ECHO              ;If buf length different from buf size
+        CALL    A_RTS_OFF               ;Else cannot take anymore characters
+RX_ECHO:        
+        LD      A,(ECHO_STATE)
+        CP      ECHO_OFF
+        JR      Z,RX_CHA_EXIT           ;Do not echo the character if echo off
+        LD      A,B                     ;Get the char back in A
+        CALL    PUTCHAR                 ;Print the char
+RX_CHA_EXIT:
+        EXX
+        EX      AF,AF'
+        EI
+	RETI
+
+
+SPEC_RX_CONDITION:
+        JP      SIO2_INIT
+
+
+
+
+
+; ***************************************************************************
+; Sends the content of register A to SIOA_D.
+; ***************************************************************************
+PUTCHAR:
+	PUSH	AF              ; Store character
+WAIT_TXA:        
+	SUB     A		; Wait for previous transmission to end
+	OUT     (SIOA_C),A
+	IN      A,(SIOA_C)
+	BIT     2,A             ; Set Zero flag if transmitting a character
+	JR      Z,WAIT_TXA      ; Loop if still transmitting character
+	BIT	3,A             ; Set zero flag if no data carrier is detected
+	JR	Z,WAIT_TXA      ; Loop if no carrier detected.
+	BIT	5,A             ; Set zero flag if not clear to send
+	JR	Z,WAIT_TXA      ; Loop if not clear to send.
+	POP     AF              ; Retrieve character
+	OUT     (SIOA_D),A      ; Output the character
+	RET
+
+
+; ***************************************************************************
+; Prints the NULL terminated string pointed by HL to SIOA_D.
+; When this function returns, no register is modified.
+; ***************************************************************************
+PRINT: 
+	PUSH	AF
+	PUSH	HL
+
+PRINT_NEXT_CHAR:
+        LD      A,(HL)          ;Reads the next character
+        OR      A		;Check if that character is null.
+	JR	Z,PRINT_EXIT	;If the null char is reached, exit.
+        CALL    PUTCHAR         ;Print the character and 
+        INC     HL              ;move to the next char.
+        JR      PRINT_NEXT_CHAR	;Print the next char
+
+PRINT_EXIT:
+	POP	HL
+	POP	AF
+	RET
+
+
+#endif
