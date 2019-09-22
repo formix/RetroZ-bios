@@ -209,7 +209,6 @@ BUF_NOT_FULL:   LD      A,D             ;else, put the byte back into A
 ; Dump the buffer content to the character output using OUTC.
 ;       Input:  Nothing
 ;       Return: Nothing
-;       Flags:  Z is set if the buffer is empty.
 ; ***************************************************************************
 DUMP_BUFFER:    LD      A,(BUFFER_STATE)
                 AND     BUFFER_EMPTY
@@ -224,8 +223,16 @@ DUMP_BUFFER_1:  LD      A,(HL)
                 CP      L               ;Check if cursor reached the head
                 RET     Z               ;Reached the head, return.
                 JR      DUMP_BUFFER_1   ;Print next byte
+
                 
-                
+; ***************************************************************************
+; Print end of line (\r\n)
+; ***************************************************************************
+PRINT_ENDL:     LD      A,10
+                CALL    OUTC
+                LD      A,13
+                CALL    OUTC
+                RET
 
 
 ; ***************************************************************************

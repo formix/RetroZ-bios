@@ -15,20 +15,11 @@ DO_NOTHING:
 
 
 KEY_PRESSED:   
-                CALL    OUTC
-                LD      A,10
-                CALL    OUTC
-                LD      A,13
-                CALL    OUTC
-                LD      A,'-'
-                CALL    OUTC
+                CALL    PRINT_ENDL
                 LD      A,'>'
                 CALL    OUTC
                 CALL    DUMP_BUFFER
-                LD      A,10
-                CALL    OUTC
-                LD      A,13
-                CALL    OUTC
+                CALL    PRINT_ENDL
                 RET
 
                 END
