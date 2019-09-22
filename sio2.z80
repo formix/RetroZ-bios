@@ -1,27 +1,42 @@
 #if !defined(_SIO2_Z80)
 
+; -------------- LABELS ----------------
 SIOA_C          EQU     $00
 SIOA_D          EQU     $01
 SIOB_C          EQU     $02
 SIOB_D          EQU     $03
 
-BUFFER_SIZE     EQU     128     ;Must be a power of 2
-ECHO_OFF        EQU     0
 ECHO_ON         EQU     1
+ECHO_OFF        EQU     0
 
-#data           HEAP,$8000
-ECHO_STATE      DEFS    1
-BUFFER_HEAD     DEFS    1
-BUFFER_LENGTH   DEFS    1
-BUFFER          DEFS    BUFFER_SIZE
+BUFFER_EMPTY    EQU     01000000b
+BUFFER_READY    EQU     0
+BUFFER_FULL     EQU     00000100b
 
-#code           INT_VECTOR,$000C
+; -------------- RAM HEAP (variables) ----------------
+HEAP            EQU     $8000
+BUFFER          EQU     HEAP
+BUFFER_HEAD     EQU     HEAP+64
+BUFFER_TAIL     EQU     HEAP+65
+BUFFER_STATE    EQU     HEAP+66
+ECHO_STATE      EQU     HEAP+67
+
+
+INT_VECTOR:     ORG     $000C
                 DEFW    RX_CHA_AVAILABLE
                 DEFW    SPEC_RX_CONDITION
 
-#code           _SIO2_Z80,INT_VECTOR+20
+_SIO2_Z80:      ORG     INT_VECTOR+20
 
 SIO2_INIT:
+        LD      A,0
+        LD      (BUFFER_HEAD),A
+        LD      (BUFFER_TAIL),A
+        LD      A,BUFFER_EMPTY
+        LD      (BUFFER_STATE),A
+        LD      A,1
+        LD      (ECHO_STATE),A
+
         ; SIOA init
 	LD      A,$00            ; write 0
 	OUT     (SIOA_C),A
@@ -137,31 +152,10 @@ WAIT_RX:
         IN      A,(SIOA_D)      ; A holds recieved character
         
         ; do something with the character
-        LD      B,A                     ;Save character in B
-        LD      A,(BUFFER_HEAD)         ;Load the buffer head index
-        LD      HL,BUFFER_LENGTH
-        ADD     A,(HL)                  ;Compute the write index
-        LD      C,BUFFER_SIZE
-        DEC     C                       ;Compute the roll over mask
-        AND     C                       ;Roll over in case of overflow
-        LD      D,0
-        LD      E,A                     ;Load the write index into DE
-        LD      HL,BUFFER               
-        ADD     HL,DE                   ;Move HL into the write position
-        LD      (HL),B                  ;Write the char at the buffer tail 
-        LD      HL,BUFFER_LENGTH
-        INC     (HL)                    ;Increment the buffer length
-        LD      A,(HL)                  
-        CP      C                       ;Comp the buf size with the buf length
-        JP      NZ,RX_ECHO              ;If buf length different from buf size
-        CALL    A_RTS_OFF               ;Else cannot take anymore characters
-RX_ECHO:        
-        LD      A,(ECHO_STATE)
-        CP      ECHO_OFF
-        JR      Z,RX_CHA_EXIT           ;Do not echo the character if echo off
-        LD      A,B                     ;Get the char back in A
-        CALL    PUTCHAR                 ;Print the char
-RX_CHA_EXIT:
+        PUSH    AF
+        CALL    PUTCHAR
+        
+
         EXX
         EX      AF,AF'
         EI
@@ -169,16 +163,79 @@ RX_CHA_EXIT:
 
 
 SPEC_RX_CONDITION:
-        JP      SIO2_INIT
+        JP      MAIN
+
+; ***************************************************************************
+; Enqueue the character from the stack into the character buffer.
+;       Input:  - The character (high byte), Don't care (low byte)
+;       Return: Nothing
+;       Flags:  Z is set if the buffer is full after the call
+;               C is set if the call failed to add to the buf because it is
+;               full.
+; ***************************************************************************
+PUTCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is full
+                AND     BUFFER_FULL     ;by looking at the BUFFER_FULL bit.
+                JR      Z,DO_ENQUEUE    ;If the buffer is not full, DO_ENQUEUE
+                POP     AF              ;else pop the parameter from the stack
+                XOR     A               ;set the Z flag,
+                SCF                     ;set the carry flag,
+                RET                     ;and exit: the enqueued byte is lost.
+DO_ENQUEUE:     LD      A,(BUFFER_HEAD) ;Load the buf head index into A.
+                LD      L,A             ;Load the head in L.
+                LD      H,$80           ;Set H to the buffer page location.
+                POP     AF              ;Get the byte parameter into A and
+                LD      (HL),A          ;save it at the buffer head.
+                INC     L               ;Increment the head value.
+                RES     6,L             ;Modulo 64 (buffer is 64 bytes long).
+                LD      A,BUFFER_READY
+                LD      (BUFFER_STATE),A;Set the buffer state to ready.
+                LD      A,(BUFFER_TAIL) ;Load the buf tail value in A.
+                CP      L               ;Check if the buffer is full.
+                JR      NZ,BUF_NOT_FULL ;If the tail is equal to the head
+                LD      A,BUFFER_FULL   ;then set the BUFFER_STATE
+                LD      (BUFFER_STATE),A;value to BUFFER_FULL.
+BUF_NOT_FULL:   LD      (BUFFER_HEAD),HL;Save the head position.
+                RET                     ;Exit the subroutine.
 
 
-
-
+; ***************************************************************************
+; Dequeue one character from the circular buffer on to the stack
+;       Input:  - Nothing
+;       Return: High byte: the character read from the buffer
+;               Low byte: SUCCESS (00000000b) if a character have been read,
+;                         BUF_EMPTY (0100000b) if the circular buf was empty
+;
+;       Remark: POPing the return value into AF will set the Z flag if the
+;               buffer was empty. Otherwise (success) the Z flag is reset.
+; ***************************************************************************
+GETCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is empty
+                AND     BUFFER_EMPTY    ;by looking at the BUFFER_EMPTY bit.
+                JR      Z,DO_DEQUEUE    ;If the buffer is not empty, DO_DEQUEUE
+                XOR     B               ;set the renurned character to null,
+                LD      C,BUFFER_EMPTY  ;set the return status to BUFFER_EMPTY,
+                PUSH    BC              ;push the return value on the stack
+                RET                     ;and exit.
+DO_DEQUEUE:     LD      A,(BUFFER_TAIL) ;Load the buf tail index into A.
+                LD      L,A             ;Load the tail in L.
+                LD      H,$80           ;Set H to the buffer page location.
+                LD      B,(HL)          ;Load the current byte in B.
+                LD      C,0             ;Load the SUCCESS value into C.
+                PUSH    BC              ;Return on the stack.
+                INC     L               ;Increment the tail value.
+                RES     6,L             ;Modulo 64 (buffer is 64 bytes long).
+                LD      A,(BUFFER_HEAD) ;Load the head value into A
+                CP      L               ;to check if the buf is empty.
+                JR      NZ,BUF_NOT_EMPTY;If the buffer is empty
+                LD      A,BUFFER_EMPTY  ;Then set the buffer empty bit.
+                LD      (BUFFER_STATE),A;and save that in the BUFFER_STATE
+BUF_NOT_EMPTY   LD      (BUFFER_TAIL),HL;Save the tail position.
+                RET                     ;Exit the subroutine.
+         
 
 ; ***************************************************************************
 ; Sends the content of register A to SIOA_D.
 ; ***************************************************************************
-PUTCHAR:
+OUTC:
 	PUSH	AF              ; Store character
 WAIT_TXA:        
 	SUB     A		; Wait for previous transmission to end
@@ -186,11 +243,11 @@ WAIT_TXA:
 	IN      A,(SIOA_C)
 	BIT     2,A             ; Set Zero flag if transmitting a character
 	JR      Z,WAIT_TXA      ; Loop if still transmitting character
-	BIT	3,A             ; Set zero flag if no data carrier is detected
-	JR	Z,WAIT_TXA      ; Loop if no carrier detected.
-	BIT	5,A             ; Set zero flag if not clear to send
-	JR	Z,WAIT_TXA      ; Loop if not clear to send.
-	POP     AF              ; Retrieve character
+	;BIT	3,A             ; Set zero flag if no data carrier is detected
+	;JR	Z,WAIT_TXA      ; Loop if no carrier detected.
+	;BIT	5,A             ; Set zero flag if not clear to send
+	;JR	Z,WAIT_TXA      ; Loop if not clear to send.
+	;POP     AF              ; Retrieve character
 	OUT     (SIOA_D),A      ; Output the character
 	RET
 
@@ -202,15 +259,13 @@ WAIT_TXA:
 PRINT: 
 	PUSH	AF
 	PUSH	HL
-
 PRINT_NEXT_CHAR:
         LD      A,(HL)          ;Reads the next character
         OR      A		;Check if that character is null.
 	JR	Z,PRINT_EXIT	;If the null char is reached, exit.
-        CALL    PUTCHAR         ;Print the character and 
+        CALL    OUTC            ;Print the character and 
         INC     HL              ;move to the next char.
         JR      PRINT_NEXT_CHAR	;Print the next char
-
 PRINT_EXIT:
 	POP	HL
 	POP	AF
