@@ -178,7 +178,6 @@ SPEC_RX_CONDITION:
 ; ***************************************************************************
 PUTCHAR:        POP     IY              ;Save the return address
                 LD      A,(BUFFER_STATE);Check if the buffer is full
-                AND     BUFFER_FULL     ;by looking at the BUFFER_FULL bit.
                 CP      BUFFER_FULL
                 JR      NZ,DO_ENQUEUE   ;If the buffer is not full, DO_ENQUEUE
                 POP     AF              ;else pop the parameter from the stack
@@ -211,18 +210,17 @@ BUF_NOT_FULL:   LD      A,D             ;else, put the byte back into A
 ;       Return: Nothing
 ; ***************************************************************************
 DUMP_BUFFER:    LD      A,(BUFFER_STATE)
-                AND     BUFFER_EMPTY
                 CP      BUFFER_EMPTY
                 RET     Z               ;If the buffer is empty, return.
                 LD      HL,(BUFFER_TAIL);Make HL the buffer cursor
-DUMP_BUFFER_1:  LD      A,(HL)
+DUMP_BYTE:      LD      A,(HL)
                 CALL    OUTC            ;Print the buffer byte
                 INC     L               ;Move the cursor to then next byte
                 RES     6,L             ;Modulo 64
                 LD      A,(BUFFER_HEAD)
                 CP      L               ;Check if cursor reached the head
                 RET     Z               ;Reached the head, return.
-                JR      DUMP_BUFFER_1   ;Print next byte
+                JR      DUMP_BYTE       ;Print next byte
 
                 
 ; ***************************************************************************
@@ -236,7 +234,7 @@ PRINT_ENDL:     LD      A,10
 
 
 ; ***************************************************************************
-; Dequeue one character from the circular buffer on to the stack
+; Dequeue one character from the circular buffer on the stack
 ;       Input:  - Nothing
 ;       Return: High byte: the character read from the buffer
 ;               Low byte: SUCCESS (00000000b) if a character have been read,
@@ -246,30 +244,31 @@ PRINT_ENDL:     LD      A,10
 ;       Remark: POPing the return value into AF will set the Z flag if the
 ;               buffer was empty. Otherwise (success) the Z flag is reset.
 ; ***************************************************************************
-GETCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is empty
-                AND     BUFFER_EMPTY    ;by looking at the BUFFER_EMPTY bit.
+GETCHAR:        POP     IY              ;Save the return address
+                LD      A,(BUFFER_STATE);Check if the buffer is empty
                 CP      BUFFER_EMPTY
-                JR      Z,DO_DEQUEUE    ;If the buffer is not empty, DO_DEQUEUE
-                XOR     B               ;set the renurned character to null,
+                JR      NZ,DO_DEQUEUE   ;If the buffer is not empty, DO_DEQUEUE
+                LD      B,0             ;set the renurned character to null,
                 LD      C,BUFFER_EMPTY  ;set the return status to BUFFER_EMPTY,
                 PUSH    BC              ;push the return value on the stack
+                PUSH    IY              ;Restore the return address
                 RET                     ;and exit.
-DO_DEQUEUE:     LD      A,(BUFFER_TAIL) ;Load the buf tail index into A.
-                LD      L,A             ;Load the tail in L.
-                LD      H,$80           ;Set H to the buffer page location.
-                LD      B,(HL)          ;Load the current byte in B.
-                LD      C,0             ;Load the SUCCESS value into C.
-                PUSH    BC              ;Return on the stack.
-                INC     L               ;Increment the tail value.
-                RES     6,L             ;Modulo 64 (buffer is 64 bytes long).
-                LD      A,(BUFFER_HEAD) ;Load the head value into A
-                CP      L               ;to check if the buf is empty.
-                JR      NZ,BUF_NOT_EMPTY;If the buffer is empty
-                LD      A,BUFFER_EMPTY  ;Then set the buffer empty bit.
-                LD      (BUFFER_STATE),A;and save that in the BUFFER_STATE
-BUF_NOT_EMPTY   LD      (BUFFER_TAIL),HL;Save the tail position.
-                RET                     ;Exit the subroutine.
-         
+DO_DEQUEUE:     LD      HL,(BUFFER_TAIL);Load the buf tail index into A.
+                LD      A,(HL)          ;Get the byte from the buffer.
+                LD      B,A             ;Load the byte in the return register
+                LD      C,0             ;Set to SUCCESS
+                PUSH    BC              ;Put the return value on the stack
+                INC     L               ;Move the tail forward
+                RES     6,L             ;Modulo 64
+                LD      (BUFFER_TAIL),HL;Save the new tail value
+                LD      A,(BUFFER_HEAD) ;Load head index in A
+                CP      L               ;Compare head and tail indices
+                JP      NZ,BUF_NOT_FULL ;If the buffer is empty 
+                LD      A,BUFFER_EMPTY   
+                LD      (BUFFER_STATE),A;then set the buffer state to EMPTY
+BUF_NOT_EMPTY:  PUSH    IY              ;Restore the return address
+                RET                     ;and exit ***.
+
 
 ; ***************************************************************************
 ; Sends the content of register A to SIOA_D.

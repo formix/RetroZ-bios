@@ -14,12 +14,31 @@ DO_NOTHING:
                 JR      DO_NOTHING
 
 
-KEY_PRESSED:   
-                CALL    PRINT_ENDL
+KEY_PRESSED:    CALL    OUTC
                 LD      A,'>'
                 CALL    OUTC
                 CALL    DUMP_BUFFER
                 CALL    PRINT_ENDL
+
+                LD      A,(BUFFER_HEAD)
+                LD      B,A
+                LD      A,(BUFFER_TAIL)
+                SUB     B
+                JR      C,MINUS
+                CP      8
+                RET     NZ
+MINUS:          CP      -8
+                RET     NZ
+                LD      A,'>'
+                CALL    OUTC
+                CALL    OUTC
+                
+NEXT_GETCHAR:   CALL    GETCHAR
+                POP     AF
+                JR      Z,NO_MORE_CHAR
+                CALL    OUTC
+                JR      NEXT_GETCHAR
+NO_MORE_CHAR:   CALL    PRINT_ENDL
                 RET
 
                 END
