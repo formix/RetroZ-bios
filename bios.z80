@@ -2,12 +2,12 @@
 #data           _HEAP,$8000
 #code           _BOOT,$0000,$0C
 #code           _INTERRUPTS,*,32
-#code           _CODE,*
-
-#code           _BOOT
-BASE:           JP      MAIN
+#code           _CODE
 
 #include "sio2.z80"
+
+#code           _BOOT
+                JP      MAIN
 
 #CODE           _CODE
 MAIN:           CALL    SIO2_INIT

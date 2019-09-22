@@ -1,4 +1,4 @@
-#if !defined(_SIO2_Z80)
+#if !defined(SIO2_INIT)
 
 ; -------------- LABELS ----------------
 SIOA_C          EQU     $00
@@ -21,21 +21,11 @@ BUFFER_TAIL     DEFS    2
 BUFFER_STATE    DEFS    1
 ECHO_STATE      DEFS    1
 
-;HEAP            EQU    $8000
-;BUFFER          EQU     HEAP
-;BUFFER_HEAD     EQU     HEAP+64
-;BUFFER_TAIL     EQU     HEAP+66
-;BUFFER_STATE    EQU     HEAP+68
-;ECHO_STATE      EQU     HEAP+69
-
-
 #code           _INTERRUPTS
                 DEFW    RX_CHA_AVAILABLE
                 DEFW    SPEC_RX_CONDITION
 
 #code           _CODE
-_SIO2_Z80:
-
 SIO2_INIT:
         LD      HL,BUFFER
         LD      (BUFFER_HEAD),HL
