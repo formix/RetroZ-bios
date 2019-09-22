@@ -16,11 +16,11 @@ BUFFER_FULL     EQU     00000100b
 ; -------------- RAM HEAP (variables) ----------------
 HEAP_START      EQU     $8000
 BUFFER          EQU     HEAP_START
-BUFFER_HEAD     EQU     HEAP_START+65   ;give one more byte for testing
-BUFFER_TAIL     EQU     HEAP_START+67
-BUFFER_STATE    EQU     HEAP_START+69
-ECHO_STATE      EQU     HEAP_START+70
-HEAP_END        EQU     HEAP_START+71
+BUFFER_HEAD     EQU     HEAP_START+64   ;give one more byte for testing
+BUFFER_TAIL     EQU     HEAP_START+66
+BUFFER_STATE    EQU     HEAP_START+68
+ECHO_STATE      EQU     HEAP_START+69
+HEAP_END        EQU     HEAP_START+70
 
 
 INT_VECTOR:     ORG     $000C
@@ -33,8 +33,6 @@ SIO2_INIT:
         LD      HL,BUFFER
         LD      (BUFFER_HEAD),HL
         LD      (BUFFER_TAIL),HL
-        LD      A,0
-        LD      (BUFFER+64),A
         LD      A,BUFFER_EMPTY
         LD      (BUFFER_STATE),A
         LD      A,ECHO_ON
@@ -192,10 +190,12 @@ DO_ENQUEUE:     LD      HL,(BUFFER_HEAD);Load the buffer address into HL
                 POP     AF              ;Get the byte to append
                 LD      D,A             ;Save the character for later in D
                 LD      (HL),A          ;Append the byte in the buffer
+                LD      A,BUFFER_READY
+                LD      (BUFFER_STATE),A;Buffer no longer empty here
                 INC     L               ;Move the head forward
                 RES     6,L             ;Modulo 64
                 LD      (BUFFER_HEAD),HL;Save the new head value
-                LD      A,(BUFFER_TAIL) ;Load tail index in C
+                LD      A,(BUFFER_TAIL) ;Load tail index in A
                 CP      L               ;Compare head and tail indices
                 JP      NZ,BUF_NOT_FULL ;If the buffer is full 
                 LD      A,BUFFER_FULL   
@@ -206,11 +206,35 @@ BUF_NOT_FULL:   LD      A,D             ;else, put the byte back into A
 
 
 ; ***************************************************************************
+; Dump the buffer content to the character output using OUTC.
+;       Input:  Nothing
+;       Return: Nothing
+;       Flags:  Z is set if the buffer is empty.
+; ***************************************************************************
+DUMP_BUFFER:    LD      A,(BUFFER_STATE)
+                AND     BUFFER_EMPTY
+                CP      BUFFER_EMPTY
+                RET     Z               ;If the buffer is empty, return.
+                LD      HL,(BUFFER_TAIL);Make HL the buffer cursor
+DUMP_BUFFER_1:  LD      A,(HL)
+                CALL    OUTC            ;Print the buffer byte
+                INC     L               ;Move the cursor to then next byte
+                RES     6,L             ;Modulo 64
+                LD      A,(BUFFER_HEAD)
+                CP      L               ;Check if cursor reached the head
+                RET     Z               ;Reached the head, return.
+                JR      DUMP_BUFFER_1   ;Print next byte
+                
+                
+
+
+; ***************************************************************************
 ; Dequeue one character from the circular buffer on to the stack
 ;       Input:  - Nothing
 ;       Return: High byte: the character read from the buffer
 ;               Low byte: SUCCESS (00000000b) if a character have been read,
-;                         BUF_EMPTY (0100000b) if the circular buf was empty
+;                         BUFFER_EMPTY (0100000b) if the circular buf was 
+;                         empty
 ;
 ;       Remark: POPing the return value into AF will set the Z flag if the
 ;               buffer was empty. Otherwise (success) the Z flag is reset.

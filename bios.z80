@@ -24,14 +24,7 @@ KEY_PRESSED:
                 CALL    OUTC
                 LD      A,'>'
                 CALL    OUTC
-
-                LD      A,(BUFFER_STATE)
-                CP      BUFFER_FULL
-                JR      Z,PRINT_BUFFER
-                LD      HL,(BUFFER_HEAD)
-                LD      (HL),0
-PRINT_BUFFER:   LD      HL,BUFFER
-                CALL    PRINT
+                CALL    DUMP_BUFFER
                 LD      A,10
                 CALL    OUTC
                 LD      A,13
