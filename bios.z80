@@ -5,14 +5,36 @@ BASE:           JP      MAIN
 
 
 MAIN:           CALL    SIO2_INIT
+                CALL    INT_INIT
 DO_NOTHING:     
-                LD      A,'%'
-                CALL    OUTC
-                JR      DO_NOTHING
                 ;CALL    GETCHAR
                 ;POP     AF
                 ;JR      Z,DO_NOTHING
                 ;CALL    OUTC
-                ;JR      DO_NOTHING
+                JR      DO_NOTHING
+
+
+KEY_PRESSED:   
+                CALL    OUTC
+                LD      A,10
+                CALL    OUTC
+                LD      A,13
+                CALL    OUTC
+                LD      A,'-'
+                CALL    OUTC
+                LD      A,'>'
+                CALL    OUTC
+
+                LD      HL,BUFFER
+                LD      A,(BUFFER_HEAD)
+                LD      L,A
+                LD      (HL),10
+                INC     L
+                LD      (HL),13
+                INC     L
+                LD      (HL),0
+                LD      HL,BUFFER
+                CALL    PRINT
+                RET
 
                 END

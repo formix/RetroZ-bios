@@ -14,12 +14,13 @@ BUFFER_READY    EQU     0
 BUFFER_FULL     EQU     00000100b
 
 ; -------------- RAM HEAP (variables) ----------------
-HEAP            EQU     $8000
-BUFFER          EQU     HEAP
-BUFFER_HEAD     EQU     HEAP+64
-BUFFER_TAIL     EQU     HEAP+65
-BUFFER_STATE    EQU     HEAP+66
-ECHO_STATE      EQU     HEAP+67
+HEAP_START      EQU     $8000
+BUFFER          EQU     HEAP_START
+BUFFER_HEAD     EQU     HEAP_START+64
+BUFFER_TAIL     EQU     HEAP_START+66
+BUFFER_STATE    EQU     HEAP_START+68
+ECHO_STATE      EQU     HEAP_START+69
+HEAP_END        EQU     HEAP_START+70
 
 
 INT_VECTOR:     ORG     $000C
@@ -29,12 +30,12 @@ INT_VECTOR:     ORG     $000C
 _SIO2_Z80:      ORG     INT_VECTOR+20
 
 SIO2_INIT:
-        LD      A,0
-        LD      (BUFFER_HEAD),A
-        LD      (BUFFER_TAIL),A
+        LD      HL,BUFFER
+        LD      (BUFFER_HEAD),HL
+        LD      (BUFFER_TAIL),HL
         LD      A,BUFFER_EMPTY
         LD      (BUFFER_STATE),A
-        LD      A,1
+        LD      A,ECHO_ON
         LD      (ECHO_STATE),A
 
         ; SIOA init
@@ -93,8 +94,6 @@ SIO2_INIT:
 	OUT     (SIOB_C),A
 	LD      A,$EA
 	OUT     (SIOB_C),A
-        
-        CALL    INT_INIT
 
 
 ; ***** SIOA ENABLE INTERRUPTS *****
@@ -153,8 +152,12 @@ WAIT_RX:
         
         ; do something with the character
         PUSH    AF
+        
+        PUSH    AF
         CALL    PUTCHAR
         
+        POP     AF
+        CALL    KEY_PRESSED
 
         EXX
         EX      AF,AF'
@@ -173,29 +176,48 @@ SPEC_RX_CONDITION:
 ;               C is set if the call failed to add to the buf because it is
 ;               full.
 ; ***************************************************************************
-PUTCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is full
-                AND     BUFFER_FULL     ;by looking at the BUFFER_FULL bit.
-                JR      Z,DO_ENQUEUE    ;If the buffer is not full, DO_ENQUEUE
-                POP     AF              ;else pop the parameter from the stack
-                XOR     A               ;set the Z flag,
-                SCF                     ;set the carry flag,
-                RET                     ;and exit: the enqueued byte is lost.
-DO_ENQUEUE:     LD      A,(BUFFER_HEAD) ;Load the buf head index into A.
-                LD      L,A             ;Load the head in L.
-                LD      H,$80           ;Set H to the buffer page location.
-                POP     AF              ;Get the byte parameter into A and
-                LD      (HL),A          ;save it at the buffer head.
-                INC     L               ;Increment the head value.
-                RES     6,L             ;Modulo 64 (buffer is 64 bytes long).
-                LD      A,BUFFER_READY
-                LD      (BUFFER_STATE),A;Set the buffer state to ready.
-                LD      A,(BUFFER_TAIL) ;Load the buf tail value in A.
-                CP      L               ;Check if the buffer is full.
-                JR      NZ,BUF_NOT_FULL ;If the tail is equal to the head
-                LD      A,BUFFER_FULL   ;then set the BUFFER_STATE
-                LD      (BUFFER_STATE),A;value to BUFFER_FULL.
-BUF_NOT_FULL:   LD      (BUFFER_HEAD),HL;Save the head position.
-                RET                     ;Exit the subroutine.
+PUTCHAR:        
+                POP     IY              ;Save the return address
+                LD      HL,(BUFFER_HEAD);Load the buffer address into HL
+                POP     AF              ;Get the byte to append
+                LD      D,A             ;Save the character for later in D
+                LD      (HL),A          ;Append the byte in the buffer
+                INC     L               ;Move the head forward
+                RES     6,L             ;Modulo 64
+                LD      (BUFFER_HEAD),HL;Save the new head value
+                LD      A,D             ;Put the byte back into A
+                PUSH    IY              ;Restore the return address
+                RET
+
+;PUTCHAR:        POP     IY              ;Save the return address
+;                LD      A,(BUFFER_STATE);Check if the buffer is full
+;                AND     BUFFER_FULL     ;by looking at the BUFFER_FULL bit.
+;                CP      BUFFER_FULL
+;                JR      NZ,DO_ENQUEUE   ;If the buffer is not full, DO_ENQUEUE
+;                POP     AF              ;else pop the parameter from the stack
+;                XOR     A               ;set the Z flag,
+;                SCF                     ;set the carry flag,
+;                RET                     ;and exit: the enqueued byte is lost.
+;DO_ENQUEUE:     LD      HL,BUFFER       ;Load the buffer address in HL
+;                LD      A,(BUFFER_HEAD) ;Load the buf head index into A.
+;                LD      L,A             ;Load the head in L.
+;                POP     AF              ;Get the byte parameter into A and
+;                LD      D,A             ;Save the character for later.
+;                LD      (HL),A          ;save it at the buffer head.
+;                INC     L               ;Increment the head value.
+;                RES     6,L             ;Modulo 64 (buffer is 64 bytes long).
+;                LD      A,BUFFER_READY
+;                LD      (BUFFER_STATE),A;Set the buffer state to ready.
+;                LD      A,(BUFFER_TAIL) ;Load the buf tail value in A.
+;                CP      L               ;Check if the buffer is full.
+;                JR      NZ,BUF_NOT_FULL ;If the tail is equal to the head
+;                LD      A,BUFFER_FULL   ;then set the BUFFER_STATE
+;                LD      (BUFFER_STATE),A;value to BUFFER_FULL.
+;                LD      A,L
+;BUF_NOT_FULL:   LD      (BUFFER_HEAD),A ;Save the head position.
+;                LD      A,D             ;Restore the character in A.
+;                PUSH    IY              ;Restore the return address
+;                RET                     ;Exit the subroutine.
 
 
 ; ***************************************************************************
@@ -210,6 +232,7 @@ BUF_NOT_FULL:   LD      (BUFFER_HEAD),HL;Save the head position.
 ; ***************************************************************************
 GETCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is empty
                 AND     BUFFER_EMPTY    ;by looking at the BUFFER_EMPTY bit.
+                CP      BUFFER_EMPTY
                 JR      Z,DO_DEQUEUE    ;If the buffer is not empty, DO_DEQUEUE
                 XOR     B               ;set the renurned character to null,
                 LD      C,BUFFER_EMPTY  ;set the return status to BUFFER_EMPTY,
@@ -243,11 +266,11 @@ WAIT_TXA:
 	IN      A,(SIOA_C)
 	BIT     2,A             ; Set Zero flag if transmitting a character
 	JR      Z,WAIT_TXA      ; Loop if still transmitting character
-	;BIT	3,A             ; Set zero flag if no data carrier is detected
-	;JR	Z,WAIT_TXA      ; Loop if no carrier detected.
-	;BIT	5,A             ; Set zero flag if not clear to send
-	;JR	Z,WAIT_TXA      ; Loop if not clear to send.
-	;POP     AF              ; Retrieve character
+	BIT	3,A             ; Set zero flag if no data carrier is detected
+	JR	Z,WAIT_TXA      ; Loop if no carrier detected.
+	BIT	5,A             ; Set zero flag if not clear to send
+	JR	Z,WAIT_TXA      ; Loop if not clear to send.
+	POP     AF              ; Retrieve character
 	OUT     (SIOA_D),A      ; Output the character
 	RET
 
