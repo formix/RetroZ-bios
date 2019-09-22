@@ -16,11 +16,11 @@ BUFFER_FULL     EQU     00000100b
 ; -------------- RAM HEAP (variables) ----------------
 HEAP_START      EQU     $8000
 BUFFER          EQU     HEAP_START
-BUFFER_HEAD     EQU     HEAP_START+64
-BUFFER_TAIL     EQU     HEAP_START+66
-BUFFER_STATE    EQU     HEAP_START+68
-ECHO_STATE      EQU     HEAP_START+69
-HEAP_END        EQU     HEAP_START+70
+BUFFER_HEAD     EQU     HEAP_START+65   ;give one more byte for testing
+BUFFER_TAIL     EQU     HEAP_START+67
+BUFFER_STATE    EQU     HEAP_START+69
+ECHO_STATE      EQU     HEAP_START+70
+HEAP_END        EQU     HEAP_START+71
 
 
 INT_VECTOR:     ORG     $000C
@@ -33,6 +33,8 @@ SIO2_INIT:
         LD      HL,BUFFER
         LD      (BUFFER_HEAD),HL
         LD      (BUFFER_TAIL),HL
+        LD      A,0
+        LD      (BUFFER+64),A
         LD      A,BUFFER_EMPTY
         LD      (BUFFER_STATE),A
         LD      A,ECHO_ON
@@ -176,48 +178,31 @@ SPEC_RX_CONDITION:
 ;               C is set if the call failed to add to the buf because it is
 ;               full.
 ; ***************************************************************************
-PUTCHAR:        
-                POP     IY              ;Save the return address
-                LD      HL,(BUFFER_HEAD);Load the buffer address into HL
+PUTCHAR:        POP     IY              ;Save the return address
+                LD      A,(BUFFER_STATE);Check if the buffer is full
+                AND     BUFFER_FULL     ;by looking at the BUFFER_FULL bit.
+                CP      BUFFER_FULL
+                JR      NZ,DO_ENQUEUE   ;If the buffer is not full, DO_ENQUEUE
+                POP     AF              ;else pop the parameter from the stack
+                CP      A               ;set the Z flag,
+                SCF                     ;set the carry flag,
+                PUSH    IY              ;restore the return address
+                RET                     ;and exit ***.
+DO_ENQUEUE:     LD      HL,(BUFFER_HEAD);Load the buffer address into HL
                 POP     AF              ;Get the byte to append
                 LD      D,A             ;Save the character for later in D
                 LD      (HL),A          ;Append the byte in the buffer
                 INC     L               ;Move the head forward
                 RES     6,L             ;Modulo 64
                 LD      (BUFFER_HEAD),HL;Save the new head value
-                LD      A,D             ;Put the byte back into A
+                LD      A,(BUFFER_TAIL) ;Load tail index in C
+                CP      L               ;Compare head and tail indices
+                JP      NZ,BUF_NOT_FULL ;If the buffer is full 
+                LD      A,BUFFER_FULL   
+                LD      (BUFFER_STATE),A;then set the buffer state to FULL
+BUF_NOT_FULL:   LD      A,D             ;else, put the byte back into A
                 PUSH    IY              ;Restore the return address
-                RET
-
-;PUTCHAR:        POP     IY              ;Save the return address
-;                LD      A,(BUFFER_STATE);Check if the buffer is full
-;                AND     BUFFER_FULL     ;by looking at the BUFFER_FULL bit.
-;                CP      BUFFER_FULL
-;                JR      NZ,DO_ENQUEUE   ;If the buffer is not full, DO_ENQUEUE
-;                POP     AF              ;else pop the parameter from the stack
-;                XOR     A               ;set the Z flag,
-;                SCF                     ;set the carry flag,
-;                RET                     ;and exit: the enqueued byte is lost.
-;DO_ENQUEUE:     LD      HL,BUFFER       ;Load the buffer address in HL
-;                LD      A,(BUFFER_HEAD) ;Load the buf head index into A.
-;                LD      L,A             ;Load the head in L.
-;                POP     AF              ;Get the byte parameter into A and
-;                LD      D,A             ;Save the character for later.
-;                LD      (HL),A          ;save it at the buffer head.
-;                INC     L               ;Increment the head value.
-;                RES     6,L             ;Modulo 64 (buffer is 64 bytes long).
-;                LD      A,BUFFER_READY
-;                LD      (BUFFER_STATE),A;Set the buffer state to ready.
-;                LD      A,(BUFFER_TAIL) ;Load the buf tail value in A.
-;                CP      L               ;Check if the buffer is full.
-;                JR      NZ,BUF_NOT_FULL ;If the tail is equal to the head
-;                LD      A,BUFFER_FULL   ;then set the BUFFER_STATE
-;                LD      (BUFFER_STATE),A;value to BUFFER_FULL.
-;                LD      A,L
-;BUF_NOT_FULL:   LD      (BUFFER_HEAD),A ;Save the head position.
-;                LD      A,D             ;Restore the character in A.
-;                PUSH    IY              ;Restore the return address
-;                RET                     ;Exit the subroutine.
+                RET                     ;and exit ***.
 
 
 ; ***************************************************************************

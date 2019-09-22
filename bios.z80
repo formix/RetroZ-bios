@@ -25,16 +25,17 @@ KEY_PRESSED:
                 LD      A,'>'
                 CALL    OUTC
 
-                LD      HL,BUFFER
-                LD      A,(BUFFER_HEAD)
-                LD      L,A
-                LD      (HL),10
-                INC     L
-                LD      (HL),13
-                INC     L
+                LD      A,(BUFFER_STATE)
+                CP      BUFFER_FULL
+                JR      Z,PRINT_BUFFER
+                LD      HL,(BUFFER_HEAD)
                 LD      (HL),0
-                LD      HL,BUFFER
+PRINT_BUFFER:   LD      HL,BUFFER
                 CALL    PRINT
+                LD      A,10
+                CALL    OUTC
+                LD      A,13
+                CALL    OUTC
                 RET
 
                 END
