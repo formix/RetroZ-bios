@@ -14,20 +14,27 @@ BUFFER_READY    EQU     0
 BUFFER_FULL     EQU     00000100b
 
 ; -------------- RAM HEAP (variables) ----------------
-HEAP_START      EQU     $8000
-BUFFER          EQU     HEAP_START
-BUFFER_HEAD     EQU     HEAP_START+64   ;give one more byte for testing
-BUFFER_TAIL     EQU     HEAP_START+66
-BUFFER_STATE    EQU     HEAP_START+68
-ECHO_STATE      EQU     HEAP_START+69
-HEAP_END        EQU     HEAP_START+70
+#data           _HEAP
+BUFFER          DEFS    64
+BUFFER_HEAD     DEFS    2
+BUFFER_TAIL     DEFS    2
+BUFFER_STATE    DEFS    1
+ECHO_STATE      DEFS    1
+
+;HEAP            EQU    $8000
+;BUFFER          EQU     HEAP
+;BUFFER_HEAD     EQU     HEAP+64
+;BUFFER_TAIL     EQU     HEAP+66
+;BUFFER_STATE    EQU     HEAP+68
+;ECHO_STATE      EQU     HEAP+69
 
 
-INT_VECTOR:     ORG     $000C
+#code           _INTERRUPTS
                 DEFW    RX_CHA_AVAILABLE
                 DEFW    SPEC_RX_CONDITION
 
-_SIO2_Z80:      ORG     INT_VECTOR+20
+#code           _CODE
+_SIO2_Z80:
 
 SIO2_INIT:
         LD      HL,BUFFER
@@ -95,6 +102,7 @@ SIO2_INIT:
 	LD      A,$EA
 	OUT     (SIOB_C),A
 
+        CALL    INT_INIT
 
 ; ***** SIOA ENABLE INTERRUPTS *****
 SIOA_EI:

@@ -1,11 +1,16 @@
-                ORG     0
+#target         rom
+#data           _HEAP,$8000
+#code           _BOOT,$0000,$0C
+#code           _INTERRUPTS,*,32
+#code           _CODE,*
+
+#code           _BOOT
 BASE:           JP      MAIN
 
 #include "sio2.z80"
 
-
+#CODE           _CODE
 MAIN:           CALL    SIO2_INIT
-                CALL    INT_INIT
 DO_NOTHING:     
                 ;CALL    GETCHAR
                 ;POP     AF
