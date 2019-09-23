@@ -170,7 +170,7 @@ WAIT_RX:
 
 
 SPEC_RX_CONDITION:
-        JP      _BOOT
+        JP      $0000
 
 ; ***************************************************************************
 ; Sends the content of register A to SIOA_D.
