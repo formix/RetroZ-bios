@@ -1,9 +1,4 @@
-#target         rom
-#data           _HEAP,$8000
-#code           _BOOT,$0000,$0C
-#code           _INTERRUPTS,*,32
-#code           _CODE
-
+#include "layout.z80"
 #include "sio2.z80"
 #include "conio.z80"
 
@@ -11,42 +6,14 @@
                 LD      SP,$0000
                 JP      MAIN
 
-#CODE           _CODE
+#CODE           _MAIN
 MAIN:           CALL    SIO2_INIT
                 CALL    CONIO_INIT
-DO_NOTHING:     
-                CALL    GETCHAR
+
+MAIN_LOOP:      CALL    GETCHAR
                 POP     AF
-                JR      Z,DO_NOTHING
+                JR      Z,MAIN_LOOP
                 CALL    OUTC
-                JR      DO_NOTHING
-
-
-;KEY_PRESSED:    CALL    OUTC
-;                LD      A,'>'
-;                CALL    OUTC
-;                CALL    DUMP_BUFFER
-;                CALL    PRINT_ENDL
-;
-;                LD      A,(BUFFER_HEAD)
-;                LD      B,A
-;                LD      A,(BUFFER_TAIL)
-;                SUB     B
-;                JR      C,MINUS
-;                CP      8
-;                RET     NZ
-;MINUS:          CP      -8
-;                RET     NZ
-;                LD      A,'>'
-;                CALL    OUTC
-;                CALL    OUTC
-;                
-;NEXT_GETCHAR:   CALL    GETCHAR
-;                POP     AF
-;                JR      Z,NO_MORE_CHAR
-;                CALL    OUTC
-;                JR      NEXT_GETCHAR
-;NO_MORE_CHAR:   CALL    PRINT_ENDL
-;                RET
+                JR      MAIN_LOOP
 
                 END

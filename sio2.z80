@@ -1,4 +1,34 @@
 #if !defined(SIO2_INIT)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                          RetroZ SIO/2 Library                           ;;
+;;                                                                         ;;
+;; Version: 0.9.0                                                          ;;
+;; https://github.com/formix/RetroZ-bios                                   ;;
+;; Original source from Mario Blunk <marioblunk@arcor.de>                  ;;
+;; http://www.train-z.de                                                   ;;
+;; How To Program The Z80 Serial I/O (SIO) and CTC v2.1                    ;;
+;; Adapted for the RetroZ-bios project by J.P. Gravel                      ;;
+;; <jeanphilippe.gravel@gmail.com>.                                        ;;
+;;                                                                         ;;
+;; This library contains a set of subroutines to control the SIO/2 chip.   ;;
+;; Exposed subroutines are:                                                ;;
+;;                                                                         ;;
+;;  - SIO2_INIT: Initialize serial port A with CTS/RTS hardware flow       ;;
+;;               at 115200 bps. Initialize serial port B without flow      ;;
+;;               control at 115200. Both are NO PARITY and 1 stop bit.     ;;
+;;  - SIO_EI:    Enable data reception (RS on) on port A.                  ;;
+;;  - SIO_DI:    Disable data reception (RS off) on port A.                ;;
+;;  - RTS_OFF:   Tell the other device to stop sending data on port A.     ;;
+;;  - RTS_ON:    Tell the other device it can send data on port A.         ;;
+;;  - OUTC:      Send a byte over PORT A. Can block while the other party  ;;
+;;               is not ready or if the previous byte is not done sending. ;;
+;;                                                                         ;;
+;;  Each byte recieved from PORT A triggers an interrupt that call the     ;;
+;;  subroutine KEY_PRESSED with reg A containing the byte recieved. It is  ;;
+;;  expected that another library implements the KEY_PRESSED event.        ;;
+;;                                                                         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 SIOA_C          EQU     $00
 SIOA_D          EQU     $01
@@ -9,7 +39,7 @@ SIOB_D          EQU     $03
                 DEFW    RX_CHA_AVAILABLE
                 DEFW    SPEC_RX_CONDITION
 
-#code           _CODE
+#code           _MAIN
 SIO2_INIT:
         LD      HL,BUFFER
         LD      (BUFFER_HEAD),HL
@@ -77,7 +107,7 @@ SIO2_INIT:
         CALL    INT_INIT
 
 ; ***** SIOA ENABLE INTERRUPTS *****
-SIOA_EI:
+SIO_EI:
         LD      A, $03          ;write into WR0: select WR3
         OUT     (SIOA_C),A
         LD      A,$C1           ;RX 8bits, auto enable off, RX on
@@ -86,7 +116,7 @@ SIOA_EI:
 
 
 ; ***** SIOA DISABLE INTERRUPTS *****
-SIOA_DI:
+SIO_DI:
         LD      A,$03           ;write into WR0: select WR3
         OUT     (SIOA_C),A
         LD      A,$C0           ;RX 8bit, auto enable off, RX off
@@ -102,7 +132,7 @@ INT_INIT:
         RET
 
 
-A_RTS_OFF:
+RTS_OFF:
         LD      A,$05           ;write into WR0: select WR5
         OUT     (SIOA_C),A
         LD      A,$E8           ;DTR active, TX 8bit, BREAK off, TX on, RTS off
@@ -110,7 +140,7 @@ A_RTS_OFF:
         RET
 
 
-A_RTS_ON:
+RTS_ON:
         LD      A,$05           ;write into WR0: select WR5
         OUT     (SIOA_C),A
         LD      A,$EA           ;DTR active, TX 8bit, BREAK off, TX on, RTS on
@@ -140,7 +170,7 @@ WAIT_RX:
 
 
 SPEC_RX_CONDITION:
-        JP      MAIN
+        JP      _BOOT
 
 ; ***************************************************************************
 ; Sends the content of register A to SIOA_D.

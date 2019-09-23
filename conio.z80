@@ -4,7 +4,6 @@ BUFFER_EMPTY    EQU     01000000b
 BUFFER_READY    EQU     0
 BUFFER_FULL     EQU     00000100b
 
-
 #data           _HEAP
 BUFFER          DEFS    64
 BUFFER_HEAD     DEFS    2
@@ -12,7 +11,7 @@ BUFFER_TAIL     DEFS    2
 BUFFER_STATE    DEFS    1
 
 
-#code           _CODE
+#code           _MAIN
 CONIO_INIT:
         LD      HL,BUFFER
         LD      (BUFFER_HEAD),HL
@@ -28,7 +27,8 @@ KEY_PRESSED:    PUSH    AF              ;Add the character on the stack.
                                         ;parameters.
 
 ; ***************************************************************************
-; Enqueue the character from the stack into the character buffer.
+; Enqueue the character from the stack into the character buffer. This 
+; subroutine should be called with interrupts disabled.
 ;       Input:  - The character (high byte), Don't care (low byte)
 ;       Return: Nothing
 ;       Flags:  Z is set if the buffer is full after the call
