@@ -1,5 +1,157 @@
 #if !defined(CONIO_INIT)
 
+BUFFER_EMPTY    EQU     01000000b
+BUFFER_READY    EQU     0
+BUFFER_FULL     EQU     00000100b
+
+
+#data           _HEAP
+BUFFER          DEFS    64
+BUFFER_HEAD     DEFS    2
+BUFFER_TAIL     DEFS    2
+BUFFER_STATE    DEFS    1
+
+
+#code           _CODE
+CONIO_INIT:
+        LD      HL,BUFFER
+        LD      (BUFFER_HEAD),HL
+        LD      (BUFFER_TAIL),HL
+        LD      A,BUFFER_EMPTY
+        LD      (BUFFER_STATE),A
+        RET
+
+
+KEY_PRESSED:    PUSH    AF              ;Add the character on the stack.
+                CALL    PUTCHAR         ;Add the character to the buffer.
+                RET                     ;Cannot use the JP trick with stack
+                                        ;parameters.
+
+; ***************************************************************************
+; Enqueue the character from the stack into the character buffer.
+;       Input:  - The character (high byte), Don't care (low byte)
+;       Return: Nothing
+;       Flags:  Z is set if the buffer is full after the call
+;               C is set if the call failed to add to the buf because it is
+;               full.
+; ***************************************************************************
+PUTCHAR:        POP     IY              ;Save the return address
+                LD      A,(BUFFER_STATE);Check if the buffer is full
+                CP      BUFFER_FULL
+                JR      NZ,DO_ENQUEUE   ;If the buffer is not full, DO_ENQUEUE
+                POP     AF              ;else pop the parameter from the stack
+                CP      A               ;set the Z flag,
+                SCF                     ;set the carry flag,
+                PUSH    IY              ;restore the return address
+                RET                     ;and exit ***.
+DO_ENQUEUE:     LD      HL,(BUFFER_HEAD);Load the buffer address into HL
+                POP     AF              ;Get the byte to append
+                LD      D,A             ;Save the character for later in D
+                LD      (HL),A          ;Append the byte in the buffer
+                LD      A,BUFFER_READY
+                LD      (BUFFER_STATE),A;Buffer no longer empty here
+                INC     L               ;Move the head forward
+                RES     6,L             ;Modulo 64
+                LD      (BUFFER_HEAD),HL;Save the new head value
+                LD      A,(BUFFER_TAIL) ;Load tail index in A
+                CP      L               ;Compare head and tail indices
+                JP      NZ,BUF_NOT_FULL ;If the buffer is full 
+                LD      A,BUFFER_FULL   
+                LD      (BUFFER_STATE),A;then set the buffer state to FULL
+BUF_NOT_FULL:   LD      A,D             ;else, put the byte back into A
+                PUSH    IY              ;Restore the return address
+                RET                     ;and exit ***.
+
+
+; ***************************************************************************
+; Dump the buffer content to the character output using OUTC.
+;       Input:  Nothing
+;       Return: Nothing
+; ***************************************************************************
+DUMP_BUFFER:    LD      A,(BUFFER_STATE)
+                CP      BUFFER_EMPTY
+                RET     Z               ;If the buffer is empty, return.
+                LD      HL,(BUFFER_TAIL);Make HL the buffer cursor
+DUMP_BYTE:      LD      A,(HL)
+                CALL    OUTC            ;Print the buffer byte
+                INC     L               ;Move the cursor to then next byte
+                RES     6,L             ;Modulo 64
+                LD      A,(BUFFER_HEAD)
+                CP      L               ;Check if cursor reached the head
+                RET     Z               ;Reached the head, return.
+                JR      DUMP_BYTE       ;Print next byte
+
+                
+; ***************************************************************************
+; Print end of line (\r\n)
+; ***************************************************************************
+PRINT_ENDL:     LD      A,10
+                CALL    OUTC
+                LD      A,13
+                CALL    OUTC
+                RET
+
+
+; ***************************************************************************
+; Dequeue one character from the circular buffer on the stack
+;       Input:  - Nothing
+;       Return: High byte: the character read from the buffer
+;               Low byte: SUCCESS (00000000b) if a character have been read,
+;                         BUFFER_EMPTY (0100000b) if the circular buf was 
+;                         empty
+;
+;       Remark: POPing the return value into AF will set the Z flag if the
+;               buffer was empty. Otherwise (success) the Z flag is reset.
+; ***************************************************************************
+GETCHAR:        DI                      ;Disable interrupts during execution
+                POP     IY              ;Save the return address
+                LD      A,(BUFFER_STATE);Check if the buffer is empty
+                CP      BUFFER_EMPTY
+                JR      NZ,DO_DEQUEUE   ;If the buffer is not empty, DO_DEQUEUE
+                LD      B,0             ;set the renurned character to null,
+                LD      C,BUFFER_EMPTY  ;set the return status to BUFFER_EMPTY,
+                PUSH    BC              ;push the return value on the stack
+                PUSH    IY              ;restore the return address
+                EI                      ;enable interrupts before leaving
+                RET                     ;and exit.
+DO_DEQUEUE:     LD      HL,(BUFFER_TAIL);Load the buf tail index into A.
+                LD      A,(HL)          ;Get the byte from the buffer.
+                LD      B,A             ;Load the byte in the return register
+                LD      C,0             ;Set to SUCCESS
+                PUSH    BC              ;Put the return value on the stack
+                INC     L               ;Move the tail forward
+                RES     6,L             ;Modulo 64
+                LD      (BUFFER_TAIL),HL;Save the new tail value
+                LD      A,(BUFFER_HEAD) ;Load head index in A
+                CP      L               ;Compare head and tail indices
+                JP      NZ,BUF_NOT_FULL ;If the buffer is empty 
+                LD      A,BUFFER_EMPTY   
+                LD      (BUFFER_STATE),A;then set the buffer state to EMPTY
+BUF_NOT_EMPTY:  PUSH    IY              ;restore the return address
+                EI                      ;enable interrupts before leaving
+                RET                     ;and exit ***.
+
+
+; ***************************************************************************
+; Prints the NULL terminated string pointed by HL to SIOA_D.
+; When this function returns, no register is modified.
+; ***************************************************************************
+PRINT: 
+	PUSH	AF
+	PUSH	HL
+PRINT_NEXT_CHAR:
+        LD      A,(HL)          ;Reads the next character
+        OR      A		;Check if that character is null.
+	JR	Z,PRINT_EXIT	;If the null char is reached, exit.
+        CALL    OUTC            ;Print the character and 
+        INC     HL              ;move to the next char.
+        JR      PRINT_NEXT_CHAR	;Print the next char
+PRINT_EXIT:
+	POP	HL
+	POP	AF
+	RET
+
+
 
 
 #endif
