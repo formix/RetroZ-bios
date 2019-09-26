@@ -15,12 +15,12 @@ MATH_INIT:      RET                     ;Nothing to init
 ;       Flags: C is set if the operation overflows.
 ; ***************************************************************************
 ADD32:          POP     IY              ;Save the return address
-                POP     HL              ;Get the low value 1 in HL
-                POP     DE              ;Get the high value 1 in DE
-                POP     BC              ;Get the low value 2 in BC
+                POP     HL              ;Get the low value 2 in HL
+                POP     DE              ;Get the high value 2 in DE
+                POP     BC              ;Get the low value 1 in BC
                 ADD     HL,BC           ;Add the two low values together
-                EX      DE,HL           ;Exchange the low sum with high 1
-                POP     BC              ;Get the high value 2 in BC
+                EX      DE,HL           ;Exchange the low sum with high 2
+                POP     BC              ;Get the high value 1 in BC
                 ADC     HL,BC           ;Add with carry the two high values
                 PUSH    IY              ;Restore the return address
                 RET                     ;and exit ***.
@@ -35,13 +35,13 @@ ADD32:          POP     IY              ;Save the return address
 ;       Flags: C is set if the operation overflows.
 ; ***************************************************************************
 SUB32:          POP     IY              ;Save the return address
-                POP     HL              ;Get the low value 1 in HL
-                POP     DE              ;Get the high value 1 in DE
-                POP     BC              ;Get the low value 2 in BC
+                POP     HL              ;Get the low value 2 in HL
+                POP     DE              ;Get the high value 2 in DE
+                POP     BC              ;Get the low value 1 in BC
                 OR      A               ;Clears carry.
                 SBC     HL,BC           ;Subs w.c. the two low values together
-                EX      DE,HL           ;Exchange the low sum with high 1
-                POP     BC              ;Get the high value 2 in BC
+                EX      DE,HL           ;Exchange the low sum with high 2
+                POP     BC              ;Get the high value 1 in BC
                 SBC     HL,BC           ;Subs with carry the two high values
                 PUSH    IY              ;Restore the return address
                 RET                     ;and exit ***.
