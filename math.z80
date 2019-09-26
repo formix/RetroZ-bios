@@ -1,0 +1,52 @@
+#if !defined(MATH_INIT)
+
+
+#CODE           _MAIN
+
+MATH_INIT:      RET                     ;Nothing to init
+
+
+
+; ***************************************************************************
+; Add the two 32 bits parameters together and return the result.
+;       Inputs: (2 words) first 32 bits value (high, low)
+;               (2 words) second 32 bit value (high, low)
+;       Output: (2 words) the 32 bits sum result (high, low)
+;       Flags: C is set if the operation overflows.
+; ***************************************************************************
+ADD32:          POP     IY              ;Save the return address
+                POP     HL              ;Get the low value 1 in HL
+                POP     DE              ;Get the high value 1 in DE
+                POP     BC              ;Get the low value 2 in BC
+                ADD     HL,BC           ;Add the two low values together
+                EX      DE,HL           ;Exchange the low sum with high 1
+                POP     BC              ;Get the high value 2 in BC
+                ADC     HL,BC           ;Add with carry the two high values
+                PUSH    HL              ;Push the high sum to the return stack
+                PUSH    DE              ;Push the low sum to the return stack
+                PUSH    IY              ;Restore the return address
+                RET                     ;and exit ***.
+
+
+; ***************************************************************************
+; Substracts the two 32 bits parameters together and return the result.
+;       Inputs: (2 words) first 32 bits value (high, low)
+;               (2 words) second 32 bit value (high, low)
+;       Output: (2 words) the 32 bits substraction result (high, low)
+;       Flags: C is set if the operation overflows.
+; ***************************************************************************
+SUB32:          POP     IY              ;Save the return address
+                POP     HL              ;Get the low value 1 in HL
+                POP     DE              ;Get the high value 1 in DE
+                POP     BC              ;Get the low value 2 in BC
+                OR      A               ;Clears carry.
+                SBC     HL,BC           ;Subs w.c. the two low values together
+                EX      DE,HL           ;Exchange the low sum with high 1
+                POP     BC              ;Get the high value 2 in BC
+                SBC     HL,BC           ;Subs with carry the two high values
+                PUSH    HL              ;Push the high sum to the return stack
+                PUSH    DE              ;Push the low sum to the return stack
+                PUSH    IY              ;Restore the return address
+                RET                     ;and exit ***.
+
+#endif

@@ -1,4 +1,33 @@
 #if !defined(CONIO_INIT)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                          RetroZ SIO/2 Library                           ;;
+;;                                                                         ;;
+;; Version: 0.5.0                                                          ;;
+;; https://github.com/formix/RetroZ-bios                                   ;;
+;; By J.P. Gravel <jeanphilippe.gravel@gmail.com>                          ;;
+;; 2019-09-25                                                              ;;
+;;                                                                         ;;
+;; This library creates a 64 bytes buffer where characters are stored      ;;
+;; using the PUTCHAR subroutine. Character are then available to be        ;;
+;; fetched by GETCHAR. This library also declares a KEY_PRESSED to recieve ;;
+;; characters emitted by other libraries like a serial IO library          ;;
+;; (sio2.z80) or any other character generating library.                   ;;
+;;                                                                         ;;
+;; This library declares a set of subroutines to add or remove characters  ;;
+;; from the character buffer and prints characters using the OUTC          ;;
+;; subroutine. Exposed subroutines are:                                    ;;
+;;                                                                         ;;
+;;  - CONIO_INIT: Initializes the library variables.                       ;;
+;;  - PUTCHAR: Adds a charcater to the character buffer.                   ;;
+;;  - GETCHAR: Gets a character from the character buffer.                 ;;
+;;  - PRINT: Prints the zero terminated string recieved as param to OUTC.  ;;
+;;                                                                         ;;
+;; The library also expose the following variable:                         ;;
+;;                                                                         ;;
+;;  - BUFFER_STATE (byte): Current state of the circular buffer, either    ;;
+;;         BUFFER_FULL, BUFFER_READY or BUFFER_EMPTY.                      ;;
+;;                                                                         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 BUFFER_EMPTY    EQU     01000000b
 BUFFER_READY    EQU     0
@@ -133,23 +162,22 @@ BUF_NOT_EMPTY:  PUSH    IY              ;restore the return address
 
 
 ; ***************************************************************************
-; Prints the NULL terminated string pointed by HL to SIOA_D.
-; When this function returns, no register is modified.
+; Prints the NULL terminated string pointed by the parameter by calling
+; OUTC. OUTC is expected to be implemented in another module.
+;       Input: The NULL terminated string address.
+;       Output: nothing.
 ; ***************************************************************************
-PRINT: 
-	PUSH	AF
-	PUSH	HL
+PRINT:          POP     IY              ;Save the return addres
+                POP     HL              ;Get the string address in HL.
 PRINT_NEXT_CHAR:
-        LD      A,(HL)          ;Reads the next character
-        OR      A		;Check if that character is null.
-	JR	Z,PRINT_EXIT	;If the null char is reached, exit.
-        CALL    OUTC            ;Print the character and 
-        INC     HL              ;move to the next char.
-        JR      PRINT_NEXT_CHAR	;Print the next char
-PRINT_EXIT:
-	POP	HL
-	POP	AF
-	RET
+                LD      A,(HL)          ;Reads the next character
+                OR      A		;Check if that character is null.
+                JR	Z,PRINT_EXIT	;If the null char is reached, exit.
+                CALL    OUTC            ;Print the character and 
+                INC     HL              ;move to the next char.
+                JR      PRINT_NEXT_CHAR	;Print the next char
+PRINT_EXIT:     PUSH    IY              ;Restore the return address
+                RET                     ;and exit.
 
 
 

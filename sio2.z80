@@ -2,7 +2,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                          RetroZ SIO/2 Library                           ;;
 ;;                                                                         ;;
-;; Version: 0.9.0                                                          ;;
+;; Version: 0.5.0                                                          ;;
 ;; https://github.com/formix/RetroZ-bios                                   ;;
 ;; Original source from Mario Blunk <marioblunk@arcor.de>                  ;;
 ;; http://www.train-z.de                                                   ;;
@@ -149,6 +149,7 @@ RTS_ON:
 
 
 RX_CHA_AVAILABLE:
+        DI
         EX      AF,AF'          ;backup AF
         EXX
 WAIT_RX:
