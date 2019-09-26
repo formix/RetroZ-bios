@@ -1,6 +1,7 @@
 #include "layout.z80"
 #include "sio2.z80"
 #include "conio.z80"
+#include "math.z80"
 
 #code           _BOOT
                 LD      SP,$0000
@@ -11,7 +12,6 @@ MAIN:           CALL    SIO2_INIT
                 CALL    CONIO_INIT
 
 MAIN_LOOP:      CALL    GETCHAR
-                POP     AF
                 JR      Z,MAIN_LOOP
                 CALL    OUTC
                 JR      MAIN_LOOP

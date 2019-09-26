@@ -8,10 +8,10 @@ MATH_INIT:      RET                     ;Nothing to init
 
 
 ; ***************************************************************************
-; Add the two 32 bits parameters together and return the result.
-;       Inputs: (2 words) first 32 bits value (high, low)
-;               (2 words) second 32 bit value (high, low)
-;       Output: (2 words) the 32 bits sum result (high, low)
+; Add the two 32 bits parameters together and return the result in HLDE.
+;       Inputs: Value1: 2 words, high then low)
+;               Value2: 2 words, high then low)
+;       Output: HLDE contains the 32 bit result.
 ;       Flags: C is set if the operation overflows.
 ; ***************************************************************************
 ADD32:          POP     IY              ;Save the return address
@@ -22,17 +22,16 @@ ADD32:          POP     IY              ;Save the return address
                 EX      DE,HL           ;Exchange the low sum with high 1
                 POP     BC              ;Get the high value 2 in BC
                 ADC     HL,BC           ;Add with carry the two high values
-                PUSH    HL              ;Push the high sum to the return stack
-                PUSH    DE              ;Push the low sum to the return stack
                 PUSH    IY              ;Restore the return address
                 RET                     ;and exit ***.
 
 
 ; ***************************************************************************
-; Substracts the two 32 bits parameters together and return the result.
-;       Inputs: (2 words) first 32 bits value (high, low)
-;               (2 words) second 32 bit value (high, low)
-;       Output: (2 words) the 32 bits substraction result (high, low)
+; Substracts the two 32 bits parameters together and return the result in
+; HLDE.
+;       Inputs: Value1: 2 words, high then low)
+;               Value2: 2 words, high then low)
+;       Output: HLDE contains the 32 bit result.
 ;       Flags: C is set if the operation overflows.
 ; ***************************************************************************
 SUB32:          POP     IY              ;Save the return address
@@ -44,8 +43,6 @@ SUB32:          POP     IY              ;Save the return address
                 EX      DE,HL           ;Exchange the low sum with high 1
                 POP     BC              ;Get the high value 2 in BC
                 SBC     HL,BC           ;Subs with carry the two high values
-                PUSH    HL              ;Push the high sum to the return stack
-                PUSH    DE              ;Push the low sum to the return stack
                 PUSH    IY              ;Restore the return address
                 RET                     ;and exit ***.
 

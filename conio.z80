@@ -124,22 +124,16 @@ PRINT_ENDL:     LD      A,10
 ; ***************************************************************************
 ; Dequeue one character from the circular buffer on the stack
 ;       Input:  - Nothing
-;       Return: High byte: the character read from the buffer
-;               Low byte: SUCCESS (00000000b) if a character have been read,
-;                         BUFFER_EMPTY (0100000b) if the circular buf was 
-;                         empty
-;
-;       Remark: POPing the return value into AF will set the Z flag if the
-;               buffer was empty. Otherwise (success) the Z flag is reset.
+;       Return: Register A contains the character read from the buffer.
+;               If the buffer was empty, A contains NULL and Z is set.
 ; ***************************************************************************
 GETCHAR:        DI                      ;Disable interrupts during execution
                 POP     IY              ;Save the return address
                 LD      A,(BUFFER_STATE);Check if the buffer is empty
                 CP      BUFFER_EMPTY
                 JR      NZ,DO_DEQUEUE   ;If the buffer is not empty, DO_DEQUEUE
-                LD      B,0             ;set the renurned character to null,
-                LD      C,BUFFER_EMPTY  ;set the return status to BUFFER_EMPTY,
-                PUSH    BC              ;push the return value on the stack
+                XOR     A               ;Else set the Z flag,
+                LD      A,0             ;set the renurned character to null,
                 PUSH    IY              ;restore the return address
                 EI                      ;enable interrupts before leaving
                 RET                     ;and exit.
@@ -156,6 +150,8 @@ DO_DEQUEUE:     LD      HL,(BUFFER_TAIL);Load the buf tail index into A.
                 JP      NZ,BUF_NOT_FULL ;If the buffer is empty 
                 LD      A,BUFFER_EMPTY   
                 LD      (BUFFER_STATE),A;then set the buffer state to EMPTY
+                POP     AF              ;Restore the return value in A.
+                OR      A               ;Reset the Z flag.
 BUF_NOT_EMPTY:  PUSH    IY              ;restore the return address
                 EI                      ;enable interrupts before leaving
                 RET                     ;and exit ***.
