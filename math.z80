@@ -9,18 +9,18 @@ MATH_INIT:      RET                     ;Nothing to init
 
 ; ***************************************************************************
 ; Add the two 32 bits parameters together and return the result in HLDE.
-;       Inputs: Value1: 2 words, high then low)
-;               Value2: 2 words, high then low)
+;       Inputs: Value1: 2 WORDs, high then low)
+;               Value2: 2 WORDs, high then low)
 ;       Output: HLDE contains the 32 bit result.
 ;       Flags: C is set if the operation overflows.
 ; ***************************************************************************
 ADD32:          POP     IY              ;Save the return address
-                POP     HL              ;Get the low value 2 in HL
-                POP     DE              ;Get the high value 2 in DE
-                POP     BC              ;Get the low value 1 in BC
+                POP     HL              ;Get the low value 1 in HL
+                POP     DE              ;Get the high value 1 in DE
+                POP     BC              ;Get the low value 2 in BC
                 ADD     HL,BC           ;Add the two low values together
-                EX      DE,HL           ;Exchange the low sum with high 2
-                POP     BC              ;Get the high value 1 in BC
+                EX      DE,HL           ;Exchange the low sum with high 1
+                POP     BC              ;Get the high value 2 in BC
                 ADC     HL,BC           ;Add with carry the two high values
                 PUSH    IY              ;Restore the return address
                 RET                     ;and exit ***.
@@ -29,21 +29,66 @@ ADD32:          POP     IY              ;Save the return address
 ; ***************************************************************************
 ; Substracts the two 32 bits parameters together and return the result in
 ; HLDE.
-;       Inputs: Value1: 2 words, high then low)
-;               Value2: 2 words, high then low)
+;       Inputs: Value1: 2 WORDs, high then low
+;               Value2: 2 WORDs, high then low
 ;       Output: HLDE contains the 32 bit result.
 ;       Flags: C is set if the operation overflows.
 ; ***************************************************************************
 SUB32:          POP     IY              ;Save the return address
-                POP     HL              ;Get the low value 2 in HL
-                POP     DE              ;Get the high value 2 in DE
-                POP     BC              ;Get the low value 1 in BC
+                POP     HL              ;Get the low value 1 in HL
+                POP     DE              ;Get the high value 1 in DE
+                POP     BC              ;Get the low value 2 in BC
                 OR      A               ;Clears carry.
                 SBC     HL,BC           ;Subs w.c. the two low values together
-                EX      DE,HL           ;Exchange the low sum with high 2
-                POP     BC              ;Get the high value 1 in BC
+                EX      DE,HL           ;Exchange the low sum with high 1
+                POP     BC              ;Get the high value 2 in BC
                 SBC     HL,BC           ;Subs with carry the two high values
                 PUSH    IY              ;Restore the return address
                 RET                     ;and exit ***.
+
+
+; ***************************************************************************
+; Multiply the two byte parameters and return the result in a byte.
+;       Inputs: Value1: byte, the first number.
+;               Value2: byte, the second number.
+;       Outputs: A byte containing the multiplication result in A.
+; ***************************************************************************
+MUL8:           POP     IY              ;Save the return address.
+                POP     DE              ;Get the two 8 bits values in D and E.
+                XOR     A               ;A=0
+                LD      B,8             ;Loads the counter to 8.
+MUL8_1:         SRL     E               ;0->E7->...->E0->CY
+                JR      NC,MUL8_2       ;If !CY, do not add D to A.
+                ADD     D               ;A=A+D        
+MUL8_2:         SLA     D               ;D=D*2
+                DJNZ    MUL8_1          ;B=B-1; if B > 0 then JR MUL8_1
+                PUSH    IY              ;Restore the return address
+                RET                     ;and exit ***.
+
+; ***************************************************************************
+; Multiply two WORD parameters and return the result in HL.
+;       Inputs: Value1: WORD, the first number.
+;               Value2: WORD, the second number.
+;       Outputs: A WORD containing the multiplication result in HL.
+; ***************************************************************************
+MUL16:          POP     IY              ;Save the return address.
+                POP     DE              ;HL=value1
+                POP     HL              ;DE=value2
+                LD      IX,0            ;IX=0
+                LD      B,16            ;Loads the counter to 16.
+MUL16_1:        SRL     H               ;0->H7->...->H0->CY
+                RR      L               ;CY->L7->...->L0->CY
+                JR      NC,MUL16_2      ;If !CY, do not add D to A.
+                ADD     IX,DE           ;IX=IX+DE        
+MUL16_2:        SLA     D               ;CY<-D7<-...<-D0<-0
+                RL      E               ;CY<-E7<-...<-E0<-CY
+                DJNZ    MUL16_1         ;B=B-1; if B > 0 then JR MUL16_1
+                PUSH    IX              ;Exchange IX with HL
+                POP     HL              ;Result in HL
+                PUSH    IY              ;Restore the return address
+                RET                     ;and exit ***.
+
+
+
 
 #endif
