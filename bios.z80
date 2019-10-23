@@ -13,6 +13,8 @@ MAIN:           CALL    SIO2_INIT
 
 MAIN_LOOP:      CALL    GETCHAR
                 JR      Z,MAIN_LOOP
+                ;PUSH    HL              ;Char is returned in L
+                LD      A,L
                 CALL    OUTC
                 JR      MAIN_LOOP
 

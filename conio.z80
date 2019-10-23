@@ -126,31 +126,25 @@ PRINT_ENDL:     LD      A,10
 ;               If the buffer was empty, A contains NULL and Z is set.
 ; ***************************************************************************
 GETCHAR:        DI                      ;Disable interrupts during execution
-                POP     IY              ;Save the return address
                 LD      A,(BUFFER_STATE);Check if the buffer is empty
                 CP      BUFFER_EMPTY
                 JR      NZ,DO_DEQUEUE   ;If the buffer is not empty, DO_DEQUEUE
                 XOR     A               ;Else set the Z flag,
-                LD      A,0             ;set the renurned character to null,
-                PUSH    IY              ;restore the return address
+                LD      L,0             ;set the renurned character to null,
                 EI                      ;enable interrupts before leaving
                 RET                     ;and exit.
-DO_DEQUEUE:     LD      HL,(BUFFER_TAIL);Load the buf tail index into A.
-                LD      A,(HL)          ;Get the byte from the buffer.
-                LD      B,A             ;Load the byte in the return register
-                LD      C,0             ;Set to SUCCESS
-                PUSH    BC              ;Put the return value on the stack
+DO_DEQUEUE:     LD      HL,(BUFFER_TAIL);Load the buf tail address into HL
+                LD      IY,(BUFFER_TAIL);and into IY
                 INC     L               ;Move the tail forward
                 RES     6,L             ;Modulo 64
                 LD      (BUFFER_TAIL),HL;Save the new tail value
                 LD      A,(BUFFER_HEAD) ;Load head index in A
                 CP      L               ;Compare head and tail indices
-                JP      NZ,BUF_NOT_FULL ;If the buffer is empty 
-                LD      A,BUFFER_EMPTY   
-                LD      (BUFFER_STATE),A;then set the buffer state to EMPTY
-                POP     AF              ;Restore the return value in A.
-                OR      A               ;Reset the Z flag.
-BUF_NOT_EMPTY:  PUSH    IY              ;restore the return address
+                JP      NZ,BUF_NOT_EMPTY;If the buffer is not empty, jump. 
+                LD      A,BUFFER_EMPTY  ;else 
+                LD      (BUFFER_STATE),A;  set the buffer state to EMPTY.
+BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
+                LD      L,(IY)          ;Return the character value into L.
                 EI                      ;enable interrupts before leaving
                 RET                     ;and exit ***.
 
