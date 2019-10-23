@@ -41,12 +41,6 @@ SIOB_D          EQU     $03
 
 #code           _MAIN
 SIO2_INIT:
-        LD      HL,BUFFER
-        LD      (BUFFER_HEAD),HL
-        LD      (BUFFER_TAIL),HL
-        LD      A,BUFFER_EMPTY
-        LD      (BUFFER_STATE),A
-
         ; SIOA init
 	LD      A,$00            ; write 0
 	OUT     (SIOA_C),A
@@ -177,7 +171,7 @@ SPEC_RX_CONDITION:
 ; Sends the content of register A to SIOA_D.
 ; ***************************************************************************
 OUTC:
-	PUSH	AF              ; Store character
+	PUSH    AF              ; Store character
 WAIT_TXA:        
 	SUB     A		; Wait for previous transmission to end
 	OUT     (SIOA_C),A
@@ -188,7 +182,7 @@ WAIT_TXA:
 	JR	Z,WAIT_TXA      ; Loop if no carrier detected.
 	BIT	5,A             ; Set zero flag if not clear to send
 	JR	Z,WAIT_TXA      ; Loop if not clear to send.
-	POP     AF              ; Retrieve character
+        POP     AF              ; Retrieve character
 	OUT     (SIOA_D),A      ; Output the character
 	RET
 

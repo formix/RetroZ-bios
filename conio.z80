@@ -155,8 +155,9 @@ BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
 ;       Input: The NULL terminated string address.
 ;       Output: nothing.
 ; ***************************************************************************
-PRINT:          POP     IY              ;Save the return addres
-                POP     HL              ;Get the string address in HL.
+PRINT:          LD      IY,2            ;Set IY to the parameter index.
+                ADD     IY,SP           ;Set IY to the parameter address.
+                LD      HL,(IY)         ;Load the string address into HL.
 PRINT_NEXT_CHAR:
                 LD      A,(HL)          ;Reads the next character
                 OR      A		;Check if that character is null.
@@ -164,8 +165,7 @@ PRINT_NEXT_CHAR:
                 CALL    OUTC            ;Print the character and 
                 INC     HL              ;move to the next char.
                 JR      PRINT_NEXT_CHAR	;Print the next char
-PRINT_EXIT:     PUSH    IY              ;Restore the return address
-                RET                     ;and exit.
+PRINT_EXIT:     RET                     ;and exit.
 
 
 

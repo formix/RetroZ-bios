@@ -2,14 +2,31 @@
 #include "sio2.z80"
 #include "conio.z80"
 #include "math.z80"
+#include "thread.z80"
 
 #code           _BOOT
                 LD      SP,$0000
                 JP      MAIN
 
+#code           _DATA
+BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.1.0",10,13
+                DEFB    "By J.P. Gravel, 2019",10,13,0
+
 #CODE           _MAIN
 MAIN:           CALL    SIO2_INIT
                 CALL    CONIO_INIT
+                CALL    MATH_INIT
+                CALL    THREAD_INIT                
+
+                LD      BC,2000
+                ;PUSH    HL
+                CALL    SLEEP
+                ;POP     HL
+
+                LD      HL,BIOS_WELCOME
+                PUSH    HL
+                CALL    PRINT
+                POP     HL
 
 MAIN_LOOP:      CALL    GETCHAR
                 JR      Z,MAIN_LOOP
