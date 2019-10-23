@@ -122,8 +122,8 @@ PRINT_ENDL:     LD      A,10
 ; ***************************************************************************
 ; Dequeue one character from the circular buffer on the stack
 ;       Input:  - Nothing
-;       Return: Register A contains the character read from the buffer.
-;               If the buffer was empty, A contains NULL and Z is set.
+;       Return: Register L contains the character read from the buffer.
+;               If the buffer was empty, L contains NULL and Z is set.
 ; ***************************************************************************
 GETCHAR:        DI                      ;Disable interrupts during execution
                 LD      A,(BUFFER_STATE);Check if the buffer is empty
