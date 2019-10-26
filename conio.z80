@@ -1,12 +1,13 @@
 #if !defined(CONIO_INIT)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                          RetroZ SIO/2 Library                           ;;
+;;                          RetroZ CONIO Library                           ;;
 ;;                                                                         ;;
 ;; Version: 0.5.0                                                          ;;
 ;; https://github.com/formix/RetroZ-bios                                   ;;
 ;; By J.P. Gravel <jeanphilippe.gravel@gmail.com>                          ;;
 ;; 2019-09-25                                                              ;;
 ;;                                                                         ;;
+;; Console IO Library                                                      ;;
 ;; This library creates a 64 bytes buffer where characters are stored      ;;
 ;; using the PUTCHAR subroutine. Character are then available to be        ;;
 ;; fetched by GETCHAR. This library also declares a KEY_PRESSED to recieve ;;
@@ -15,7 +16,8 @@
 ;;                                                                         ;;
 ;; This library declares a set of subroutines to add or remove characters  ;;
 ;; from the character buffer and prints characters using the OUTC          ;;
-;; subroutine. Exposed subroutines are:                                    ;;
+;; subroutine from a basic IO libraru (like sio2.z80). Exposed subroutines ;;
+;; are:                                                                    ;;
 ;;                                                                         ;;
 ;;  - CONIO_INIT: Initializes the library variables.                       ;;
 ;;  - PUTCHAR: Adds a charcater to the character buffer.                   ;;

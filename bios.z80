@@ -18,10 +18,10 @@ MAIN:           CALL    SIO2_INIT
                 CALL    MATH_INIT
                 CALL    THREAD_INIT                
 
-                LD      BC,2000
-                ;PUSH    HL
+                LD      HL,1000         ; Set 2000ms as parameter
+                PUSH    HL
                 CALL    SLEEP
-                ;POP     HL
+                POP     HL              ; Cleanup the stack
 
                 LD      HL,BIOS_WELCOME
                 PUSH    HL
