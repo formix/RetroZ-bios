@@ -1,4 +1,24 @@
 #if !defined(MATH_INIT)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                          RetroZ math Library                            ;;
+;;                                                                         ;;
+;; Version: 0.5.0                                                          ;;
+;; https://github.com/formix/RetroZ-bios                                   ;;
+;; By J.P. Gravel <jeanphilippe.gravel@gmail.com>                          ;;
+;; 2019-10-26                                                              ;;
+;;                                                                         ;;
+;; This library contains basic math functions.                             ;;
+;;                                                                         ;;
+;;  - MUL8:      Multiplies two BYTES returns a WORD                       ;;
+;;  - MUL16:     Multiplies two WORDS returns a DWORD                      ;;
+;;  - DIV16:     Divides two WORDs returns divident in a WORD              ;;
+;;  - MOD16:     Divides two WORDs returns the remainder in a WORD         ;;
+;;                                                                         ;;
+;;  Relies heavily on http://z80-heaven.wikidot.com                        ;;
+;;  and the related source code from https://github.com/Zeda/z80float      ;;
+;;  Big thanks to these web site and github project autors!                ;;
+;;                                                                         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 #CODE           _MAIN
@@ -8,86 +28,278 @@ MATH_INIT:      RET                     ;Nothing to init
 
 
 ; ***************************************************************************
-; Add the two 32 bits parameters together and return the result in HLDE.
-;       Inputs: Value1: 2 WORDs, high then low)
-;               Value2: 2 WORDs, high then low)
-;       Output: HLDE contains the 32 bit result.
-;       Flags: C is set if the operation overflows.
-; ***************************************************************************
-ADD32:          POP     IY              ;Save the return address
-                POP     HL              ;Get the low value 1 in HL
-                POP     DE              ;Get the high value 1 in DE
-                POP     BC              ;Get the low value 2 in BC
-                ADD     HL,BC           ;Add the two low values together
-                EX      DE,HL           ;Exchange the low sum with high 1
-                POP     BC              ;Get the high value 2 in BC
-                ADC     HL,BC           ;Add with carry the two high values
-                PUSH    IY              ;Restore the return address
-                RET                     ;and exit ***.
-
-
-; ***************************************************************************
-; Substracts the two 32 bits parameters together and return the result in
-; HLDE.
-;       Inputs: Value1: 2 WORDs, high then low
-;               Value2: 2 WORDs, high then low
-;       Output: HLDE contains the 32 bit result.
-;       Flags: C is set if the operation overflows.
-; ***************************************************************************
-SUB32:          POP     IY              ;Save the return address
-                POP     HL              ;Get the low value 1 in HL
-                POP     DE              ;Get the high value 1 in DE
-                POP     BC              ;Get the low value 2 in BC
-                OR      A               ;Clears carry.
-                SBC     HL,BC           ;Subs w.c. the two low values together
-                EX      DE,HL           ;Exchange the low sum with high 1
-                POP     BC              ;Get the high value 2 in BC
-                SBC     HL,BC           ;Subs with carry the two high values
-                PUSH    IY              ;Restore the return address
-                RET                     ;and exit ***.
-
-
-; ***************************************************************************
-; Multiply the two byte parameters and return the result in a byte.
+; Multiply the two byte parameters and return the result in a word.
 ;       Inputs: Value1: byte, the first number.
 ;               Value2: byte, the second number.
-;       Outputs: A byte containing the multiplication result in A.
+;       Outputs: HL The multiplication result.
+;
+; I started implementing this myself and ended up copying that code 
+; (and comments) from a website I forgot. Quite similar to what I did, 
+; except for the stack parameters extraction. If you are the author of these
+; lines please email me and I'll give you credit here.
 ; ***************************************************************************
-MUL8:           POP     IY              ;Save the return address.
-                POP     DE              ;Get the two 8 bits values in D and E.
-                XOR     A               ;A=0
-                LD      B,8             ;Loads the counter to 8.
-MUL8_1:         SRL     E               ;0->E7->...->E0->CY
-                JR      NC,MUL8_2       ;If !CY, do not add D to A.
-                ADD     D               ;A=A+D        
-MUL8_2:         SLA     D               ;D=D*2
-                DJNZ    MUL8_1          ;B=B-1; if B > 0 then JR MUL8_1
-                PUSH    IY              ;Restore the return address
-                RET                     ;and exit ***.
+MUL8:           LD      IY,3            ; Sets IY to Value1 index.
+                ADD     IY,SP           ; Sets IY to the Value1 address.
+                LD      A,(IY)          ; Loads Value1 into A
+                LD      E,(IY+2)        ; Loads Value2 into E
+                LD      HL,0            ; set accumulator to 0
+                LD      D,H             ; (makes adding 'E' to 'accumulator' easier)
+MUL8_LOOP:      OR      A               ; while a is not 0, then:
+                RET     Z
+                RRA                     ; shift A right, carrying out the bottom bit
+                JR      NC,MUL8_SKIP    ; if 1 is carried out:
+                ADD     HL,DE           ; add E to the accumulator
+MUL8_SKIP:      SLA     E               ; shift E to the left, shifting in 0.
+                RL      D               
+                JR      MUL8_LOOP
+                ; RETURNS WITHIN MUL8_LOOP
+
 
 ; ***************************************************************************
-; Multiply two WORD parameters and return the result in HL.
+; Multiply two WORD parameters and return the result in DEHL.
 ;       Inputs: Value1: WORD, the first number.
 ;               Value2: WORD, the second number.
-;       Outputs: A WORD containing the multiplication result in HL.
+;       Outputs: A DWORD containing the multiplication result in DEHL.
 ; ***************************************************************************
-MUL16:          POP     IY              ;Save the return address.
-                POP     DE              ;HL=value1
-                POP     HL              ;DE=value2
-                LD      IX,0            ;IX=0
-                LD      B,16            ;Loads the counter to 16.
-MUL16_1:        SRL     H               ;0->H7->...->H0->CY
-                RR      L               ;CY->L7->...->L0->CY
-                JR      NC,MUL16_2      ;If !CY, do not add D to A.
-                ADD     IX,DE           ;IX=IX+DE        
-MUL16_2:        SLA     D               ;CY<-D7<-...<-D0<-0
-                RL      E               ;CY<-E7<-...<-E0<-CY
-                DJNZ    MUL16_1         ;B=B-1; if B > 0 then JR MUL16_1
-                PUSH    IX              ;Exchange IX with HL
-                POP     HL              ;Result in HL
-                PUSH    IY              ;Restore the return address
-                RET                     ;and exit ***.
+MUL16:          LD      IY,2
+                ADD     IY,SP
+                LD      C,(IY)
+                LD      B,(IY+1)
+                LD      E,(IY+2)
+                LD      D,(IY+3)
 
+MUL_BC_DE_DEHL:
+; BC*DE --> DEHL
+;  ~544.887cc as calculated in jacobly's test
+; min: 214cc  (DE = 1)
+; max: 667cc
+; avg: 544.4507883cc  however, deferring to jacobly's result as mine may have
+;                     math issues ?
+; 177 bytes
+; From https://github.com/Zeda/z80float
+; This was made by Runer112
+; Tested by jacobly
+                ld	a,d
+                ld	d,0
+                ld	h,b
+                ld	l,c
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit14
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit13
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit12
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit11
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit10
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit9
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit8
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit7
+                ld	a,e
+                and	%11111110
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit6
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit5
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit4
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit3
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit2
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit1
+                add	a,a
+                jr	c,Mul_BC_DE_DEHL_Bit0
+                rr	e
+                ret	c
+                ld	h,d
+                ld	l,e
+                ret
+
+Mul_BC_DE_DEHL_Bit14:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit13
+                add	hl,bc
+                adc	a,d
+Mul_BC_DE_DEHL_Bit13:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit12
+                add	hl,bc
+                adc	a,d
+Mul_BC_DE_DEHL_Bit12:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit11
+                add	hl,bc
+                adc	a,d
+Mul_BC_DE_DEHL_Bit11:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit10
+                add	hl,bc
+                adc	a,d
+Mul_BC_DE_DEHL_Bit10:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit9
+                add	hl,bc
+                adc	a,d
+Mul_BC_DE_DEHL_Bit9:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit8
+                add	hl,bc
+                adc	a,d
+Mul_BC_DE_DEHL_Bit8:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit7
+                add	hl,bc
+                adc	a,d
+Mul_BC_DE_DEHL_Bit7:
+                ld	d,a
+                ld	a,e
+                and	%11111110
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit6
+                add	hl,bc
+                adc	a,0
+Mul_BC_DE_DEHL_Bit6:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit5
+                add	hl,bc
+                adc	a,0
+Mul_BC_DE_DEHL_Bit5:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit4
+                add	hl,bc
+                adc	a,0
+Mul_BC_DE_DEHL_Bit4:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit3
+                add	hl,bc
+                adc	a,0
+Mul_BC_DE_DEHL_Bit3:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit2
+                add	hl,bc
+                adc	a,0
+Mul_BC_DE_DEHL_Bit2:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit1
+                add	hl,bc
+                adc	a,0
+Mul_BC_DE_DEHL_Bit1:
+                add	hl,hl
+                adc	a,a
+                jr	nc,Mul_BC_DE_DEHL_Bit0
+                add	hl,bc
+                adc	a,0
+Mul_BC_DE_DEHL_Bit0:
+                add	hl,hl
+                adc	a,a
+                jr	c,Mul_BC_DE_DEHL_FunkyCarry
+                rr	e
+                ld	e,a
+                ret	nc
+                add	hl,bc
+                ret	nc
+                inc	e
+                ret	nz
+                inc	d
+                ret
+
+Mul_BC_DE_DEHL_FunkyCarry:
+                inc	d
+                rr	e
+                ld	e,a
+                ret	nc
+                add	hl,bc
+                ret	nc
+                inc	e
+                ret
+
+
+
+; ***************************************************************************
+; Divides two WORD parameters and return the quotient in HL.
+;       Inputs: divided: WORD, the divided number.
+;               divisor: WORD, the divisor number.
+;       Outputs: The quotient in HL.
+; ***************************************************************************
+DIV16:          LD      IY,2
+                ADD     IY,SP
+                LD      E,(IY)
+                LD      D,(IY+1)
+                LD      C,(IY+2)
+                LD      B,(IY+3)
+                CALL    BC_DIVBY_DE
+                LD      L,C
+                LD      H,B
+                RET
+
+; ***************************************************************************
+; Divides two WORD parameters and return the remainder in HL.
+;       Inputs: divided: WORD, the divided number.
+;               divisor: WORD, the divisor number.
+;       Outputs: The remainder in HL.
+; ***************************************************************************
+MOD16:          LD      IY,2
+                ADD     IY,SP
+                LD      E,(IY)
+                LD      D,(IY+1)
+                LD      C,(IY+2)
+                LD      B,(IY+3)
+                ;JR      BC_DIVBY_DE
+                ;ASSUMES THAT BC_DIVBY_DE FOLLOWS
+
+BC_DIVBY_DE:
+; Source http://z80-heaven.wikidot.com/advanced-math#toc29
+; BC/DE ==> BC, remainder in HL
+; NOTE: BC/0 returns 0 as the quotient.
+; min: 1072cc
+; max: 1232cc
+; avg: 1152cc
+; 28 bytes
+                XOR A
+                LD H,A
+                LD L,A
+                SUB E
+                LD E,A
+                SBC A,A
+                SUB D
+                LD D,A
+                LD A,B
+                LD B,16
+
+DIV16_LOOP:
+;shift the bits from BC into HL
+                RL C
+                RLA
+                ADC HL,HL
+                ADD HL,DE
+                JR C,DIV16_LOOP_DONE
+                SBC HL,DE
+
+DIV16_LOOP_DONE:
+                DJNZ DIV16_LOOP
+                RL C
+                RLA
+                LD B,A
+                RET
 
 
 

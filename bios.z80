@@ -18,7 +18,7 @@ MAIN:           CALL    SIO2_INIT
                 CALL    MATH_INIT
                 CALL    THREAD_INIT                
 
-                LD      HL,1000         ; Set 2000ms as parameter
+                LD      HL,1000         ; Set wait time in ms as parameter
                 PUSH    HL
                 CALL    SLEEP
                 POP     HL              ; Cleanup the stack
