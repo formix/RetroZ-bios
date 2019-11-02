@@ -239,6 +239,7 @@ Mul_BC_DE_DEHL_FunkyCarry:
 ;       Inputs: divided: WORD, the divided number.
 ;               divisor: WORD, the divisor number.
 ;       Outputs: The quotient in HL.
+;                The remainder in DE.
 ; ***************************************************************************
 DIV16:          LD      IY,2
                 ADD     IY,SP
@@ -247,6 +248,8 @@ DIV16:          LD      IY,2
                 LD      E,(IY+2)
                 LD      D,(IY+3)
                 CALL    BC_DIVBY_DE
+                LD      E,L
+                LD      D,H
                 LD      L,C
                 LD      H,B
                 RET
@@ -256,6 +259,7 @@ DIV16:          LD      IY,2
 ;       Inputs: divided: WORD, the divided number.
 ;               divisor: WORD, the divisor number.
 ;       Outputs: The remainder in HL.
+;                The quotien in BC.
 ; ***************************************************************************
 MOD16:          LD      IY,2
                 ADD     IY,SP

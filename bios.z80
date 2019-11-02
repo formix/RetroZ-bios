@@ -5,6 +5,9 @@
 #include "thread.z80"
 #include "stdlib.z80"
 
+#data           _HEAP
+DECIMAL_NUM     DEFS    6
+
 #code           _BOOT
                 LD      SP,$0000
                 JP      MAIN
@@ -12,6 +15,7 @@
 #code           _DATA
 BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.1.0",10,13
                 DEFB    "By J.P. Gravel, 2019",10,13,0
+NUMBER          DEFW    17890
 
 #CODE           _MAIN
 MAIN:           CALL    SIO2_INIT
@@ -29,6 +33,24 @@ MAIN:           CALL    SIO2_INIT
                 PUSH    HL
                 CALL    PRINT
                 POP     HL
+
+                LD      HL,10
+                PUSH    HL
+                LD      HL,NUMBER
+                PUSH    HL
+                LD      HL,DECIMAL_NUM
+                PUSH    HL
+                CALL    ITOA
+                POP     HL
+                POP     HL
+                POP     HL
+                
+                LD      HL,DECIMAL_NUM
+                PUSH    HL
+                CALL    PRINT
+                POP     HL
+                CALL    PRINT_ENDL
+
 
 MAIN_LOOP:      CALL    GETCHAR
                 JR      Z,MAIN_LOOP
