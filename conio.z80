@@ -71,7 +71,6 @@ PUTCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is full
                 CP      BUFFER_FULL
                 JR      NZ,DO_ENQUEUE   ;If the buffer is not full, DO_ENQUEUE
                 CP      A               ;set the Z flag,
-                PUSH    IY              ;restore the return address
                 RET                     ;and exit ***.
 DO_ENQUEUE:     LD      HL,(BUFFER_HEAD);Load the buffer address into HL
                 LD      IY,3            ;Get the byte to append from the first
