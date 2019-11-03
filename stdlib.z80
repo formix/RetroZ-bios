@@ -38,6 +38,8 @@ STDLIB_INIT:      RET
 ; ***************************************************************************
 ITOA:           LD      IY,2            ; Index of the first param on stack.
                 ADD     IY,SP           ; Address of the first param.
+                LD      IX,2            ; Index of the first param on stack.
+                ADD     IX,SP           ; Address of the first param.
                 LD      C,(IY+2)        ; The converted value param.
                 LD      B,(IY+3)
                 LD      E,(IY+4)        ; The conversion base param.
@@ -71,8 +73,8 @@ ITOA_DECODE:    PUSH    DE              ; Add param on the stack (divisor).
 
                 ; We now have to unstack every character and put them in order
                 ; in the string pointer provided as the first paramter.
-ITOA_WRITE_O:   LD      L,(IY)          ; the target string param
-                LD      H,(IY+1)
+ITOA_WRITE_O:   LD      L,(IX)          ; the target string param
+                LD      H,(IX+1)
 ITOA_WRITE:     POP     AF              ; Get the next character.
                 LD      (HL),A          ; Write that char into the current pos.
                 OR      0               ; Check if A contains 0

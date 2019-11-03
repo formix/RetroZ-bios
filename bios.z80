@@ -36,7 +36,7 @@ MAIN:           CALL    SIO2_INIT
 
                 LD      HL,10
                 PUSH    HL
-                LD      HL,NUMBER
+                LD      HL,(NUMBER)
                 PUSH    HL
                 LD      HL,DECIMAL_NUM
                 PUSH    HL
