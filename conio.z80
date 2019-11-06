@@ -23,6 +23,7 @@
 ;;  - PUTCHAR: Adds a charcater to the character buffer.                   ;;
 ;;  - GETCHAR: Gets a character from the character buffer.                 ;;
 ;;  - PRINT: Prints the zero terminated string recieved as param to OUTC.  ;;
+;;  - CLS: Clears the screen                                               ;;
 ;;                                                                         ;;
 ;; The library also expose the following variable:                         ;;
 ;;                                                                         ;;
@@ -40,6 +41,9 @@ BUFFER          DEFS    64
 BUFFER_HEAD     DEFS    2
 BUFFER_TAIL     DEFS    2
 BUFFER_STATE    DEFS    1
+
+#code           _DATA
+VT102_CLS       DEFB    27,"[2J",0
 
 
 #code           _MAIN
@@ -159,16 +163,20 @@ BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
 PRINT:          LD      IY,2            ;Set IY to the parameter index.
                 ADD     IY,SP           ;Set IY to the parameter address.
                 LD      HL,(IY)         ;Load the string address into HL.
-PRINT_NEXT_CHAR:
-                LD      A,(HL)          ;Reads the next character
+PRINT_:         LD      A,(HL)          ;Reads the next character
                 OR      A		;Check if that character is null.
                 JR	Z,PRINT_EXIT	;If the null char is reached, exit.
                 CALL    OUTC            ;Print the character and 
                 INC     HL              ;move to the next char.
-                JR      PRINT_NEXT_CHAR	;Print the next char
+                JR      PRINT_	        ;Print the next char
 PRINT_EXIT:     RET                     ;and exit.
 
 
+; ***************************************************************************
+; Clear the screen and set the cursor home.
+; ***************************************************************************
+CLS:            LD      HL,VT102_CLS
+                JR      PRINT_
 
 
 #endif

@@ -14,7 +14,15 @@ DECIMAL_NUM     DEFS    6
 
 #code           _DATA
 BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.5.0",10,13
-                DEFB    "By J.P. Gravel, 2019",10,13,0
+                DEFB    "By J.P. Gravel, 2019",10,13,10,13
+                DEFB    "Waiting for program...",0
+
+RECEIVE_START   DEFB    "*Recieving*",10,13,0
+RECEIVE_SIZE    DEFB    "Size: ",0
+RECEIVE_ADDR    DEFB    "Target location: ",0
+RECEIVE_PROG    DEFB    "Program loaded: ",0
+LOADING_MSG     DEFB    "Loading",0
+
 
 #CODE           _MAIN
 MAIN:           CALL    SIO2_INIT
@@ -27,17 +35,97 @@ MAIN:           CALL    SIO2_INIT
                 PUSH    HL
                 CALL    SLEEP
                 POP     HL              ; Cleanup the stack
-
+                
+                CALL    CLS
                 LD      HL,BIOS_WELCOME
                 PUSH    HL
                 CALL    PRINT
                 POP     HL
 
-MAIN_LOOP:      CALL    GETCHAR
-                JR      Z,MAIN_LOOP
-                ;PUSH    HL              ;Char is returned in L
-                LD      A,L
+
+WAIT_PROG_START:
+                ; Loop until the prog start character is 
+                ; recieved (character NULL)
+                CALL    INPC
+                OR      A
+                JR      NZ,WAIT_PROG_START
+                
+                LD      HL,RECEIVE_START
+                CALL    PRINT_
+                
+                ; Load the program size in DE
+                CALL    INPC
+                LD      E,A
+                CALL    INPC
+                LD      D,A
+                
+                ; Print the program size
+                LD      HL,RECEIVE_SIZE
+                CALL    PRINT_
+                LD      HL,10
+                PUSH    HL              ;Conversion base 10
+                PUSH    DE              ;The program size
+                LD      HL,DECIMAL_NUM
+                PUSH    HL              ;The string mem location
+                CALL    ITOA            ;integer to ansi string
+                POP     HL              ;Set HL to string mem location
+                CALL    PRINT_          ;Print the program size
+                POP     DE              ;Clean the stack
+                POP     HL              ;Clean the stack
+                LD      A,"b"
+                CALL    OUTC            ;Print "b"
+                CALL    PRINT_ENDL
+
+                PUSH    DE              ;save program size on the stack
+
+                ; Load the program memory location
+                CALL    INPC
+                LD      E,A
+                CALL    INPC
+                LD      D,A
+
+                LD      HL,RECEIVE_ADDR
+                CALL    PRINT_
+                LD      HL,16
+                PUSH    HL              ;Conversion base 16 (hexa)
+                PUSH    DE              ;Push the memory address
+                LD      HL,DECIMAL_NUM
+                PUSH    HL              ;The string address
+                CALL    ITOA            ;Converts the address to hexadecimal
+                LD      A,"0"
                 CALL    OUTC
-                JR      MAIN_LOOP
+                LD      A,"x"
+                CALL    OUTC
+                POP     HL              ;Pop string address
+                CALL    PRINT_          ;Print the memory address
+                POP     HL              ;Pop memory location in HL
+                POP     DE              ;Clean the stack
+                CALL    PRINT_ENDL
+                
+                LD      HL,LOADING_MSG
+                CALL    PRINT_          ;Print the loading msg
+
+                ; Prepare the program loading loop (inir). HL already 
+                ; contains the target address...
+                POP     DE              ;The high byte loop count in D
+                LD      B,E             ;The low byte loop count in B
+                LD      C,SIOA_D        ;Set the data port A address in C
+                PUSH    HL              ;Save program start adress on stack
+LOAD_BLOCK:     INIR                    ;Loads directly in ram address (HL)
+                LD      A,D
+                OR      A
+                JR      Z,PROG_LOADED   ;If complete, jp to prog_loaded
+                DEC     D               ;Else, decrement D and 
+                LD      B,255           ;Set B to 255
+                LD      A,"."
+                CALL    OUTC            ;Print a dot to show loading block
+                JR      LOAD_BLOCK      ;Copy the other block
+
+                ; Program completely recieved. We need to jump to it.
+PROG_LOADED:    LD      HL,RECEIVE_PROG
+                CALL    PRINT_
+                POP     HL              ;Get the program start addess
+                JP      HL              ;Jump to the loaded program!
+                
 
                 END
