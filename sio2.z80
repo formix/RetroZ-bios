@@ -22,6 +22,8 @@
 ;;  - RTS_ON:    Tell the other device it can send data on port A.         ;;
 ;;  - OUTC:      Send a byte over PORT A. Can block while the other party  ;;
 ;;               is not ready or if the previous byte is not done sending. ;;
+;;  - INPC:      Input a byte from PORT A. Blocks until a byte is          ;;
+;;               available.                                                ;;
 ;;                                                                         ;;
 ;;  Each byte recieved from PORT A triggers an interrupt that call the     ;;
 ;;  subroutine KEY_PRESSED with reg A containing the byte recieved. It is  ;;
@@ -54,7 +56,8 @@ SIO2_INIT:
 
 	LD      A,$01            ; write 1
 	OUT     (SIOA_C),A
-	LD      A,$18            ; interrupt on all recv
+;	LD      A,$18            ; interrupt on all recv
+        LD      A,$00            ; no interrupt on recv char
 	OUT     (SIOA_C),A
 
 	LD      A,$03            ; write 3
@@ -141,6 +144,19 @@ RTS_ON:
         OUT     (SIOA_C),A
         RET
 
+START_RX_INT:
+	LD      A,$01            ; write 1
+	OUT     (SIOA_C),A
+	LD      A,$18            ; interrupt on all recv char
+	OUT     (SIOA_C),A
+        RET
+
+STOP_RX_INT:
+	LD      A,$01            ; write 1
+	OUT     (SIOA_C),A
+	LD      A,$00            ; no interrupt at all on recv char
+	OUT     (SIOA_C),A
+        RET
 
 RX_CHA_AVAILABLE:
         DI
@@ -186,5 +202,17 @@ WAIT_TXA:
 	OUT     (SIOA_D),A      ; Output the character
 	RET
 
+
+; ***************************************************************************
+; Reads SIOA_D into A.
+; ***************************************************************************
+INPC:
+	SUB	A		;Clears A
+	OUT	(SIOA_C),A	;Select RR0
+	IN	A,(SIOA_C)	;Read RR0
+	BIT	0,A		;Check if character is available
+	JR	Z,INPC          ;Character not recieved yet, check again
+        IN      A,(SIOA_D)      ;A holds recieved character
+        RET
 
 #endif

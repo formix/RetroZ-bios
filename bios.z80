@@ -7,6 +7,8 @@
 
 #data           _HEAP
 DECIMAL_NUM     DEFS    6
+PROG_ADDR       DEFS    2
+PROG_SIZE       DEFS    2
 
 #code           _BOOT
                 LD      SP,$0000
@@ -14,7 +16,15 @@ DECIMAL_NUM     DEFS    6
 
 #code           _DATA
 BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.5.0",10,13
-                DEFB    "By J.P. Gravel, 2019",10,13,0
+                DEFB    "By J.P. Gravel, 2019",10,13,10,13
+                DEFB    "Waiting for program...",0
+
+RECEIVE_START   DEFB    "*Recieving*",10,13,0
+RECEIVE_SIZE    DEFB    "Size: ",0
+RECEIVE_ADDR    DEFB    "Target location: ",0
+RECEIVE_PROG    DEFB    "Program loaded: ",0
+LOADING_MSG     DEFB    "Loading",0
+
 
 #CODE           _MAIN
 MAIN:           CALL    SIO2_INIT
@@ -23,21 +33,202 @@ MAIN:           CALL    SIO2_INIT
                 CALL    THREAD_INIT                
                 CALL    STDLIB_INIT
 
+                ;Wait one second while the host get ready.
                 LD      HL,1000         ; Set wait time in ms as parameter
                 PUSH    HL
                 CALL    SLEEP
                 POP     HL              ; Cleanup the stack
-
+                
+                CALL    CLS
                 LD      HL,BIOS_WELCOME
                 PUSH    HL
                 CALL    PRINT
+                CALL    PRINT_ENDL
                 POP     HL
 
-MAIN_LOOP:      CALL    GETCHAR
-                JR      Z,MAIN_LOOP
-                ;PUSH    HL              ;Char is returned in L
+
+WAIT_PROG_START:
+                ;Loop until the prog start character is 
+                ;recieved (character NULL)
+                CALL    INPC
+                OR      A
+                JR      NZ,WAIT_PROG_START
+
+                ;Load the program size in DE
+                CALL    INPC
+                LD      (PROG_SIZE),A
+                CALL    INPC
+                LD      (PROG_SIZE+1),A
+                
+                ;Load the program start address
+                CALL    INPC
+                LD      (PROG_ADDR),A
+                CALL    INPC
+                LD      (PROG_ADDR+1),A
+
+                ;Load the program into memory
+                LD      BC,(PROG_SIZE)  ;Set the byte counter.
+                LD      DE,(PROG_ADDR)  ;Set the destination address.
+READ_NEXT_BYTE: CALL    INPC            ;Read the next byte.
+                LD      (DE),A          ;Put the byte in the dest. address.
+                INC     DE              ;Increment the dest. address.
+                DEC     BC              ;Decrement the byte count.
+                LD      A,B
+                OR      C               ;BC == 0?
+                JR      Z,PROG_LOADED   ;TRUE:  launch the program.
+                JR      READ_NEXT_BYTE  ;FALSE: read the next byte.
+
+                ;Program completely recieved. We need to jump to it.
+PROG_LOADED:  
+            
+                ;Print the loaded program from RAM
+;                LD      HL,(PROG_ADDR)
+;                LD      BC,(PROG_SIZE)
+;                CALL    MEMDUMP
+;                CALL    PRINT_ENDL
+
+                LD      HL,(PROG_ADDR)
+                JP      HL              ;Jump to the loaded program!
+
+
+; Dump the memory content in hexa to the output.
+; HL: Start address
+; BC: byte count
+MEMDUMP:       
+                ;Print destination address
+                CALL    ENFRAME
+                LD      A,"0"
+                CALL    OUTC
+                LD      A,"x"
+                CALL    OUTC
+                LD      DE,16           ;Conversion base param
+                PUSH    DE
+                PUSH    HL              ;Start address param
+                LD      DE,DECIMAL_NUM
+                PUSH    DE              ;Target string address param
+                CALL    ITOA            ;Convert to hexadecimal
+                CALL    PRINT           ;Print the start address
+                POP     DE
+                POP     DE
+                POP     DE
+                LD      A,';'
+                CALL    OUTC
+                CALL    DEFRAME
+                
+                ;Print byte count
+                CALL    ENFRAME
+                LD      DE,10           ;Conversion base param
+                PUSH    DE
+                PUSH    BC              ;Byte count param
+                LD      DE,DECIMAL_NUM  
+                PUSH    DE              ;Target string address param
+                CALL    ITOA            ;Convert to decimal
+                CALL    PRINT           ;Print the byte count value.
+                POP     DE
+                POP     DE
+                POP     DE
+                LD      A,'b'
+                CALL    OUTC
+                CALL    PRINT_ENDL
+                CALL    DEFRAME
+
+                LD      IX,0            ;Initialize word counter
+MEMDUMP_1: 
+                ;Print first byte
+                CALL    ENFRAME
+                LD      A,(HL)
+                CALL    TOHEX
+                LD      A,H
+                CALL    OUTC
                 LD      A,L
                 CALL    OUTC
-                JR      MAIN_LOOP
+                CALL    DEFRAME
+             
+                INC     HL              ;Moving forward
+                DEC     BC
+              
+                LD      A,B
+                OR      C
+                RET     Z               ;When Byte count is zero, we are done
+
+                ;Print second byte 
+                CALL    ENFRAME
+                LD      A,(HL)
+                CALL    TOHEX
+                LD      A,H
+                CALL    OUTC
+                LD      A,L
+                CALL    OUTC
+                CALL    DEFRAME
+
+                INC     HL              ;Moving forward
+                DEC     BC
+
+                LD      A,B
+                OR      C
+                RET     Z               ;When Byte count is zero, we are done
+
+                ;After 8 words, print ENDL
+                INC     IX
+                LD      A,8
+                CP      IXL
+                JR      NZ,MEMDUMP_2
+                LD      IX,0
+                CALL    ENFRAME
+                CALL    PRINT_ENDL
+                CALL    DEFRAME
+
+                JP      MEMDUMP_1      
+                
+                ;Print space between words
+MEMDUMP_2:      LD      A,' '
+                CALL    OUTC
+
+                JP      MEMDUMP_1 ;Print the next word
+
+
+
+ENFRAME:        POP     IY
+                PUSH    AF
+                PUSH    BC
+                PUSH    DE
+                PUSH    HL
+                PUSH    IX
+                PUSH    IY
+                RET
+
+DEFRAME:        POP     IY
+                POP     IX
+                POP     HL
+                POP     DE
+                POP     BC
+                POP     AF
+                PUSH    IY
+                RET
+               
+
+TOHEX:          PUSH    AF      ;Save A to reuse it later
+                RR      A
+                RR      A
+                RR      A
+                RR      A       ;A = A >> 4
+                AND     $0F     ;Clear A's high nibble
+                LD      BC,0
+                LD      C,A
+                LD      IX,HEXA
+                ADD     IX,BC
+                LD      H,(IX)
+                
+                POP     AF
+                AND     $0F
+                LD      BC,0
+                LD      C,A
+                LD      IX,HEXA
+                ADD     IX,BC
+                LD      L,(IX)
+                RET
+                
+                
+ 
 
                 END
