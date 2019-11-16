@@ -6,7 +6,7 @@ ITOA_RESULT     DEFS    17
 
 
 #code           _DATA
-HEXA            DEFB    "0123456789ABCDEF"
+HEXA            DEFB    "0123456789abcdef"
 
 
 #code           _MAIN

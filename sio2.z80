@@ -22,6 +22,8 @@
 ;;  - RTS_ON:    Tell the other device it can send data on port A.         ;;
 ;;  - OUTC:      Send a byte over PORT A. Can block while the other party  ;;
 ;;               is not ready or if the previous byte is not done sending. ;;
+;;  - INPC:      Input a byte from PORT A. Blocks until a byte is          ;;
+;;               available.                                                ;;
 ;;                                                                         ;;
 ;;  Each byte recieved from PORT A triggers an interrupt that call the     ;;
 ;;  subroutine KEY_PRESSED with reg A containing the byte recieved. It is  ;;
