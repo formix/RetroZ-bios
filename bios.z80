@@ -17,13 +17,10 @@ PROG_SIZE       DEFS    2
 #code           _DATA
 BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.5.0",10,13
                 DEFB    "By J.P. Gravel, 2019",10,13,10,13
-                DEFB    "Waiting for program...",0
+                DEFB    "Waiting for program...",10,13,0
 
-RECEIVE_START   DEFB    "*Recieving*",10,13,0
-RECEIVE_SIZE    DEFB    "Size: ",0
-RECEIVE_ADDR    DEFB    "Target location: ",0
-RECEIVE_PROG    DEFB    "Program loaded: ",0
-LOADING_MSG     DEFB    "Loading",0
+PROG_RECEIVING  DEFB    "Recieving",0
+PROG_LOADED_STR DEFB    "Program loaded: ",0
 
 
 #CODE           _MAIN
@@ -43,7 +40,6 @@ MAIN:           CALL    SIO2_INIT
                 LD      HL,BIOS_WELCOME
                 PUSH    HL
                 CALL    PRINT
-                CALL    PRINT_ENDL
                 POP     HL
 
 
@@ -71,22 +67,27 @@ WAIT_PROG_START:
                 LD      DE,(PROG_ADDR)  ;Set the destination address.
 READ_NEXT_BYTE: CALL    INPC            ;Read the next byte.
                 LD      (DE),A          ;Put the byte in the dest. address.
-                INC     DE              ;Increment the dest. address.
+NO_DOT:         INC     DE              ;Increment the dest. address.
                 DEC     BC              ;Decrement the byte count.
                 LD      A,B
                 OR      C               ;BC == 0?
                 JR      Z,PROG_LOADED   ;TRUE:  launch the program.
                 JR      READ_NEXT_BYTE  ;FALSE: read the next byte.
 
-                ;Program completely recieved. We need to jump to it.
-PROG_LOADED:  
-            
+PROG_LOADED:
                 ;Print the loaded program from RAM
-;                LD      HL,(PROG_ADDR)
-;                LD      BC,(PROG_SIZE)
-;                CALL    MEMDUMP
-;                CALL    PRINT_ENDL
+                CALL    PRINT_ENDL
+                LD      HL,(PROG_ADDR)
+                LD      BC,(PROG_SIZE)
+                CALL    MEMDUMP
+                CALL    PRINT_ENDL
 
+                CALL    PRINT_ENDL
+                LD      HL,PROG_LOADED_STR
+                PUSH    HL
+                CALL    PRINT
+                POP     HL
+            
                 LD      HL,(PROG_ADDR)
                 JP      HL              ;Jump to the loaded program!
 
@@ -185,27 +186,8 @@ MEMDUMP_2:      LD      A,' '
                 CALL    OUTC
 
                 JP      MEMDUMP_1 ;Print the next word
+                ;RETURN WITHIN LOOP
 
-
-
-ENFRAME:        POP     IY
-                PUSH    AF
-                PUSH    BC
-                PUSH    DE
-                PUSH    HL
-                PUSH    IX
-                PUSH    IY
-                RET
-
-DEFRAME:        POP     IY
-                POP     IX
-                POP     HL
-                POP     DE
-                POP     BC
-                POP     AF
-                PUSH    IY
-                RET
-               
 
 TOHEX:          PUSH    AF      ;Save A to reuse it later
                 RR      A

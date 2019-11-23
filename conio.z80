@@ -43,7 +43,7 @@ BUFFER_TAIL     DEFS    2
 BUFFER_STATE    DEFS    1
 
 #code           _DATA
-VT102_CLS       DEFB    27,"[2J",0
+VT102_CLS       DEFB    27,"[0m",27,"[2J",0
 
 
 #code           _MAIN

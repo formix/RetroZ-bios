@@ -84,5 +84,24 @@ ITOA_WRITE:     POP     AF              ; Get the next character.
                 ; RETURNS WITHIN THE LOOP
 
 
+ENFRAME:        POP     IY
+                PUSH    AF
+                PUSH    BC
+                PUSH    DE
+                PUSH    HL
+                PUSH    IX
+                PUSH    IY
+                RET
+
+DEFRAME:        POP     IY
+                POP     IX
+                POP     HL
+                POP     DE
+                POP     BC
+                POP     AF
+                PUSH    IY
+                RET
+               
+
 
 #endif
