@@ -4,6 +4,7 @@
 #include "math.z80"
 #include "thread.z80"
 #include "stdlib.z80"
+#include "termdraw.z80"
 
 #data           _HEAP
 DECIMAL_NUM     DEFS    6
@@ -29,6 +30,7 @@ MAIN:           CALL    SIO2_INIT
                 CALL    MATH_INIT
                 CALL    THREAD_INIT                
                 CALL    STDLIB_INIT
+                CALL    TERMDRAW_INIT
 
                 ;Wait one second while the host get ready.
                 LD      HL,1000         ; Set wait time in ms as parameter
@@ -211,6 +213,4 @@ TOHEX:          PUSH    AF      ;Save A to reuse it later
                 RET
                 
                 
- 
-
                 END
