@@ -1,0 +1,2 @@
+minicom -c on -D /dev/ttyUSB0 -b115200
+minipro -Sp AT28C64B -w bios.rom
