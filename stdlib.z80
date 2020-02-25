@@ -1,0 +1,60 @@
+#if !defined(STDLIB_INIT)
+#include "math.z80"
+
+#code           _DATA
+HEXA            DEFB    "0123456789abcdef"
+
+
+#code           _MAIN
+STDLIB_INIT:      RET
+
+
+
+; ***************************************************************************
+; Convert the value in BC to a null terminated string of base DE.
+; The memory block pointed by IX is expected to be large enough to hold the 
+; number plus the terminating NULL character.
+;
+;       Input:  0) The output string buffer.
+;               1) The output string buffer length.
+;               2) The 16 bit number to convert to a string.
+;               3) The conversion base (2,8,10 or 16).
+;       Return: The output string address in HL
+; 
+; ***************************************************************************
+ITOA:           _GETP   HL,0            ; Get the output string buffer.
+                _GETP   BC,1            ; Get the output string length.
+                ADD     HL,BC           ; Put HL after the end of the buffer.
+                DEC     HL              ; Move HL at the end of str buffer.
+                LD      (HL),0          ; Put a NULL terminason string in HL.
+
+                _GETP   BC,2            ; Converted value param
+                _GETP   DE,3            ; Conversion base param
+
+                ; Do the modulo operation with the base to get the character
+                ; index in the HEXA array (see above in the _DATA code segment).
+ITOA_DECODE:    PUSH    HL              ; Save current string position.
+                PUSH    DE              ; Add param on the stack (divisor).
+                PUSH    BC              ; Add param on the stack (divised).
+                CALL    MOD16           ; After the mod, the chr index is in HL
+                                        ; Now: HL is remains, BC is quotient.
+                POP     DE              ; Throw divised value away.                
+
+                ; The caracter index in HL, we now have to add it to the stack.
+                LD      DE,HEXA 
+                ADD     HL,DE           ; Move HL to the hex char address
+                POP     DE              ; Get the divisor(base) back into DE
+                LD      A,(HL)          ; Get the character into A and
+                POP     HL              ; Get back the string position
+                DEC     HL              ; Moves string pointer one char
+                LD      (HL),A          ; Put the next char in (HL)
+
+                ; BC now contains the quotient, which is the new value we want
+                ; to divide by the base for the next iteration.
+                LD      A,C
+                OR      B
+                JR      NZ,ITOA_DECODE  ; Decode the next char if not zero.
+
+                _RET_HL HL              ; Returns the string address in HL.
+
+#endif

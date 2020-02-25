@@ -3,12 +3,14 @@
 #include "sio2.z80"
 #include "conio.z80"
 #include "thread.z80"
-;#include "math.z80"
-;#include "stdlib.z80"
+#include "math.z80"
+#include "stdlib.z80"
 ;#include "termdraw.z80"
 
+DECIMAL_BUFSIZE EQU     6
+
 #data           _HEAP
-DECIMAL_NUM     DEFS    6
+DECIMAL_BUF     DEFS    DECIMAL_BUFSIZE
 PROG_ADDR       DEFS    2
 PROG_SIZE       DEFS    2
 
@@ -29,8 +31,8 @@ PROG_LOADED_STR DEFB    "Program loaded: ",0
 MAIN:           CALL    SIO2_INIT
                 CALL    CONIO_INIT
                 CALL    THREAD_INIT                
-;                CALL    MATH_INIT
-;                CALL    STDLIB_INIT
+                CALL    MATH_INIT
+                CALL    STDLIB_INIT
 ;                CALL    TERMDRAW_INIT
 
                 ;Wait one second while the host get ready.
@@ -76,57 +78,50 @@ NO_DOT:         INC     DE              ;Increment the dest. address.
 PROG_LOADED:
                 ;Print the loaded program from RAM
                 CALL    PRINT_ENDL
-                ;LD      HL,(PROG_ADDR)
-                ;LD      BC,(PROG_SIZE)
-                _ADDLP  (PROG_ADDR)     ;parameter 1
-                _ADDLP  (PROG_SIZE)     ;parameter 0
+                _ADDLP  (PROG_SIZE)     ;parameter 1
+                _ADDLP  (PROG_ADDR)     ;parameter 0
                 _CALL    MEMDUMP
                 CALL    PRINT_ENDL
                 CALL    PRINT_ENDL
                 _ADDLP  PROG_LOADED_STR
-                _CALL    PRINT
+                _CALL   PRINT
             
                 LD      HL,(PROG_ADDR)
                 JP      HL              ;Jump to the loaded program!
 
 
 ; Dump the memory content in hexa to the output.
-; HL: Start address
-; BC: byte count
-MEMDUMP:        _GETP   BC,0
-                _GETP   HL,1
+; 0: Start address
+; 1: byte count
+MEMDUMP:        _GETP   HL,0
+                _GETP   BC,1
+
                 ;Print destination address
                 CALL    _PUSH
                 LD      A,"0"
                 CALL    OUTC
                 LD      A,"x"
                 CALL    OUTC
-                LD      DE,16           ;Conversion base param
-                PUSH    DE
-                PUSH    HL              ;Start address param
-                LD      DE,DECIMAL_NUM
-                PUSH    DE              ;Target string address param
-                CALL    ITOA            ;Convert to hexadecimal
+                _ADDLP  16              ;Conversion base 16 param
+                _ADDRP  HL              ;Convert the start address
+                _ADDLP  DECIMAL_BUFSIZE ;The buffer size
+                _ADDLP  DECIMAL_BUF     ;The target string
+                _CALL   ITOA            ;Convert to hexadecimal into HL
+                _ADDRP  HL              ;Set the string to print param
                 CALL    PRINT           ;Print the start address
-                POP     DE
-                POP     DE
-                POP     DE
                 LD      A,';'
                 CALL    OUTC
                 CALL    _POP
                 
                 ;Print byte count
                 CALL    _PUSH
-                LD      DE,10           ;Conversion base param
-                PUSH    DE
-                PUSH    BC              ;Byte count param
-                LD      DE,DECIMAL_NUM  
-                PUSH    DE              ;Target string address param
-                CALL    ITOA            ;Convert to decimal
-                CALL    PRINT           ;Print the byte count value.
-                POP     DE
-                POP     DE
-                POP     DE
+                _ADDLP  10              ;Conversion base 10 param
+                _ADDRP  BC              ;Byte count param
+                _ADDLP  DECIMAL_BUFSIZE ;The buffer size
+                _ADDLP  DECIMAL_BUF     ;The target string
+                _CALL   ITOA            ;Convert to decimal into HL
+                _ADDRP  HL              ;Set the string to print param.
+                _CALL   PRINT           ;Print the byte count value.
                 LD      A,'b'
                 CALL    OUTC
                 CALL    PRINT_ENDL
@@ -138,7 +133,7 @@ MEMDUMP_1:
                 CALL    _PUSH
                 LD      A,(HL)
                 _ADDRP  AF
-                _CALL    TOHEX
+                _CALL   TOHEX
                 LD      A,H
                 CALL    OUTC
                 LD      A,L
