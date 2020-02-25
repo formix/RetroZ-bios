@@ -1,0 +1,107 @@
+#if !defined(STDLIB_INIT)
+#include "math.z80"
+
+#data           _HEAP
+ITOA_RESULT     DEFS    17
+
+
+#code           _DATA
+HEXA            DEFB    "0123456789abcdef"
+
+
+#code           _MAIN
+STDLIB_INIT:      RET
+
+
+
+
+
+
+
+; ***************************************************************************
+; Convert the value in BC to a null terminated string of base DE.
+; The memory block pointed by IX is expected to be large enough to hold the 
+; number plus the terminating NULL character.
+;
+;       Input:  1) The output string address.
+;               2) The 16 bit number to convert to a string.
+;               3) The conversion base (2,8,10 or 16).
+;       Return: The output string address.
+;       Flags:  Irrelevant
+;
+; 
+; for example, if DE is 2 then converts HL to a binary string.
+;              if DE is 8, octal string
+;              if DE is 10, decimal string
+;              if DE is 16, hexadecimal string.
+;              any value between 2 and 16 can be used as a base.
+; ***************************************************************************
+ITOA:           LD      IY,2            ; Index of the first param on stack.
+                ADD     IY,SP           ; Address of the first param.
+                LD      IX,2            ; Index of the first param on stack.
+                ADD     IX,SP           ; Address of the first param.
+                LD      C,(IY+2)        ; The converted value param.
+                LD      B,(IY+3)
+                LD      E,(IY+4)        ; The conversion base param.
+                LD      D,(IY+5)
+
+                ; Will put the character on the stack in the revers order
+                ; Start by adding the null termination charcater on the stack.
+                XOR     A               ; Reset A to NULL
+                PUSH    AF              ; Add the NULL temination to the stack
+
+                ; Do the modulo operation with the base to get the character
+                ; index in the HEXA array (see above in the _DATA code segment).
+ITOA_DECODE:    PUSH    DE              ; Add param on the stack (divisor).
+                PUSH    BC              ; Add param on the stack (divised).
+                CALL    MOD16           ; After the mod, the chr index is in HL
+                                        ; Now: HL is remains, BC is quotient.
+                POP     DE              ; Throw divised value away.                
+
+                ; The caracter index in HL, we now have to add it to the stack.
+                LD      DE,HEXA 
+                ADD     HL,DE           ; Move HL to the hex char address
+                POP     DE              ; Get the divisor(base) back into DE
+                LD      A,(HL)          ; Get the character into A and
+                PUSH    AF              ; add add it to the stack
+
+                ; BC now contains the quotient, which is the new value we want
+                ; to divide by the base for the next iteration.
+                LD      A,C
+                OR      B
+                JR      NZ,ITOA_DECODE  ; Decode the next char if not zero.
+
+                ; We now have to unstack every character and put them in order
+                ; in the string pointer provided as the first paramter.
+ITOA_WRITE_O:   LD      L,(IX)          ; the target string param
+                LD      H,(IX+1)
+ITOA_WRITE:     POP     AF              ; Get the next character.
+                LD      (HL),A          ; Write that char into the current pos.
+                OR      0               ; Check if A contains 0
+                RET     Z               ; if A contains the NULL char, GTFO
+                INC     HL              ; Set the pointer to the next char pos.
+                JR      ITOA_WRITE
+                ; RETURNS WITHIN THE LOOP
+
+
+ENFRAME:        POP     IY
+                PUSH    AF
+                PUSH    BC
+                PUSH    DE
+                PUSH    HL
+                PUSH    IX
+                PUSH    IY
+                RET
+
+DEFRAME:        POP     IY
+                POP     IX
+                POP     HL
+                POP     DE
+                POP     BC
+                POP     AF
+                PUSH    IY
+                RET
+               
+
+
+#endif
