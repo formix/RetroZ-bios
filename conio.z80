@@ -32,6 +32,8 @@
 ;;                                                                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;requires callstack.z80 included
+
 BUFFER_EMPTY    EQU     01000000b
 BUFFER_READY    EQU     0
 BUFFER_FULL     EQU     00000100b
@@ -56,9 +58,8 @@ CONIO_INIT:
         RET
 
 
-KEY_PRESSED:    PUSH    AF              ;Add the character on the stack.
-                CALL    PUTCHAR         ;Add the character to the buffer.
-                POP     AF
+KEY_PRESSED:    _ADDRP  AF              ;Add AF as paremeter
+                _CALL   PUTCHAR         ;Add the character to the buffer.
                 RET                     ;Cannot use the JP trick with stack
                                         ;parameters.
 
@@ -77,10 +78,8 @@ PUTCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is full
                 CP      A               ;set the Z flag,
                 RET                     ;and exit ***.
 DO_ENQUEUE:     LD      HL,(BUFFER_HEAD);Load the buffer address into HL
-                LD      IY,3            ;Get the byte to append from the first
-                ADD     IY,SP           ;parameter on the stack.
-                LD      A,(IY)
-                LD      D,A             ;Save the character for later in D
+                _GETP   DE,0            ;Get param 0 into DE
+                LD      A,D             ;Put the character from D into A
                 LD      (HL),A          ;Append the byte in the buffer
                 LD      A,BUFFER_READY
                 LD      (BUFFER_STATE),A;Buffer no longer empty here
@@ -96,7 +95,8 @@ BUF_NOT_FULL:   RET                     ;and exit ***.
 
 
 ; ***************************************************************************
-; Dump the buffer content to the character output using OUTC.
+; Dump the buffer content to the character output using OUTC. This is a 
+; debug subroutine.
 ;       Input:  Nothing
 ;       Return: Nothing
 ; ***************************************************************************
@@ -160,23 +160,21 @@ BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
 ;       Input: The NULL terminated string address.
 ;       Output: nothing.
 ; ***************************************************************************
-PRINT:          LD      IY,2            ;Set IY to the parameter index.
-                ADD     IY,SP           ;Set IY to the parameter address.
-                LD      HL,(IY)         ;Load the string address into HL.
-PRINT_:         LD      A,(HL)          ;Reads the next character
-                OR      A		;Check if that character is null.
-                JR	Z,PRINT_EXIT	;If the null char is reached, exit.
+PRINT:          _GETP   HL,0            ;Load the string address into HL.
+_PRINT:         LD      A,(HL)          ;Reads the next character
+                OR      A               ;Check if that character is null.
+                RET     Z               ;If the null char is reached, exit.
                 CALL    OUTC            ;Print the character and 
                 INC     HL              ;move to the next char.
-                JR      PRINT_	        ;Print the next char
-PRINT_EXIT:     RET                     ;and exit.
+                JR      _PRINT          ;Print the next char
 
 
 ; ***************************************************************************
 ; Clear the screen and set the cursor home.
 ; ***************************************************************************
 CLS:            LD      HL,VT102_CLS
-                JR      PRINT_
+                JR      _PRINT
+
 
 
 #endif

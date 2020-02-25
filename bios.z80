@@ -1,10 +1,11 @@
 #include "layout.z80"
+#include "callstack.z80"
 #include "sio2.z80"
 #include "conio.z80"
-#include "math.z80"
 #include "thread.z80"
-#include "stdlib.z80"
-#include "termdraw.z80"
+;#include "math.z80"
+;#include "stdlib.z80"
+;#include "termdraw.z80"
 
 #data           _HEAP
 DECIMAL_NUM     DEFS    6
@@ -27,22 +28,18 @@ PROG_LOADED_STR DEFB    "Program loaded: ",0
 #CODE           _MAIN
 MAIN:           CALL    SIO2_INIT
                 CALL    CONIO_INIT
-                CALL    MATH_INIT
                 CALL    THREAD_INIT                
-                CALL    STDLIB_INIT
-                CALL    TERMDRAW_INIT
+;                CALL    MATH_INIT
+;                CALL    STDLIB_INIT
+;                CALL    TERMDRAW_INIT
 
                 ;Wait one second while the host get ready.
-                LD      HL,1000         ; Set wait time in ms as parameter
-                PUSH    HL
-                CALL    SLEEP
-                POP     HL              ; Cleanup the stack
+                _ADDLP  1000            ;Set wait time in ms as parameter
+                _CALL   SLEEP
                 
-                CALL    CLS
-                LD      HL,BIOS_WELCOME
-                PUSH    HL
-                CALL    PRINT
-                POP     HL
+                _CALL   CLS
+                _ADDLP  BIOS_WELCOME    ;Add the string to print as param 
+                _CALL   PRINT
 
 
 WAIT_PROG_START:

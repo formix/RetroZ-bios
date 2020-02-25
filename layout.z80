@@ -3,5 +3,6 @@
 #code           _BOOT,$0000,$0C
 #code           _INTERRUPTS,*,$20
 #code           _MAIN
+#code           _MAIN_FOOTER
 #code           _DATA
 
