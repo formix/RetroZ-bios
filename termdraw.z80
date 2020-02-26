@@ -1,0 +1,252 @@
+#if !defined(TERMDRAW_INIT)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                       RetroZ termdraw library                           ;;
+;;                                                                         ;;
+;; Version: 0.5.0                                                          ;;
+;; https://github.com/formix/RetroZ-bios                                   ;;
+;; By J.P. Gravel <jeanphilippe.gravel@gmail.com>                          ;;
+;; 2019-09-25                                                              ;;
+;;                                                                         ;;
+;; Terminal drawing library                                                ;;
+;;                                                                         ;;
+;;  - SET_COLOR: Sets the color for the next characters.                   ;;
+;;  - SET_ATTRIBUTE: Sets the display attibute for the next characters.    ;;
+;;  - SET_POS: Sets the position of the cursor.                            ;;
+;;  - DRAW_LINE: Draws a line between plus signs.       Ex: +-----+        ;;
+;;  - DRAW_ROW: Draws two pipes for a given row length. Ex: |     |        ;;
+;;  - DRAW_RECT: Draws a rectagle made of DRAW_LINEs and DRAW_ROWs         ;;
+;;                                                                         ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+ESC             EQU     27
+
+COLOR_BLACK     EQU     "0"
+COLOR_RED       EQU     "1"
+COLOR_GREEN     EQU     "2"
+COLOR_YELLOW    EQU     "3"
+COLOR_BLUE      EQU     "4"
+COLOR_MAGENTA   EQU     "5"
+COLOR_CYAN      EQU     "6"
+COLOR_WHITE     EQU     "7"
+
+ATTR_RESET      EQU     "0"
+ATTR_BRIGHT     EQU     "1"
+ATTR_DIM        EQU     "2"
+ATTR_UNDERSCORE EQU     "4"
+ATTR_BLINK      EQU     "5"
+ATTR_REVERSE    EQU     "7"
+ATTR_HIDDEN     EQU     "8"
+
+
+#data           _HEAP
+STR_POS_LEN     EQU     4
+STR_POS         DEFS    STR_POS_LEN
+
+
+#CODE           _MAIN
+
+TERMDRAW_INIT:  RET
+
+; ***************************************************************************
+; Sets the foreground and background colors.
+;       Param 1: Foreground (byte)
+;       Param 2: Background (byte)
+;
+;       Colors are:
+;               COLOR_BLACK
+;               COLOR_RED
+;               COLOR_GREEN
+;               COLOR_YELLOW
+;               COLOR_BLUE
+;               COLOR_MAGENTA
+;               COLOR_CYAN
+;               COLOR_WHITE     
+; ***************************************************************************
+SET_COLOR:      _GETP   HL,0
+                LD      A,ESC
+                CALL    OUTC
+                LD      A,"["
+                CALL    OUTC
+                LD      A,"3"
+                CALL    OUTC
+                LD      A,(HL)
+                CALL    OUTC
+                LD      A,";"
+                CALL    OUTC
+                LD      A,"4"
+                CALL    OUTC
+                INC     HL
+                LD      A,(HL)
+                CALL    OUTC
+                LD      A,"m"
+                CALL    OUTC
+                RET
+
+                
+; ***************************************************************************
+; Sets the display attribute.
+;       Param 1: Display attribute (byte)
+;
+;       Attributes are:
+;               ATTR_RESET
+;               ATTR_BRIGHT
+;               ATTR_DIM
+;               ATTR_UNDERSCORE
+;               ATTR_BLINK
+;               ATTR_REVERSE
+;               ATTR_HIDDEN
+; ***************************************************************************
+SET_ATTRIBUTE:  _GETP   HL,0
+                LD      A,ESC
+                CALL    OUTC
+                LD      A,"["
+                CALL    OUTC
+                LD      A,(HL)
+                CALL    OUTC
+                LD      A,"m"
+                CALL    OUTC
+                RET
+
+
+; ***************************************************************************
+; Sets the cursor postion
+;       Param 1: row (byte)
+;       Param 2: col (byte)
+; ***************************************************************************
+SET_POS:        _GETP   BC,0
+
+                ;Start the VT102 sequence
+                LD      A,ESC
+                CALL    OUTC
+                LD      A,"["
+                CALL    OUTC
+
+                ;Print the row
+                LD      E,B             ;Put the row value in E
+                LD      D,0             ;DE now contains the row value
+                _ADDLP  10              ;Add the base parameter
+                _ADDRP  DE              ;Add the row value
+                _ADDLP  STR_POS_LEN     ;Add the string buf length
+                _ADDLP  STR_POS         ;Add the buffer address
+                _CALL   ITOA            ;Convert the row value to a string
+                _ADDRP  HL
+                _CALL   PRINT           ;Print the string of the row value
+
+                ;Print the VT102 row-col separator
+                LD      A,";"
+                CALL    OUTC
+
+                ;Print the col
+                LD      E,C             ;Put the col value in E
+                LD      D,0             ;DE now contains the col value
+                _ADDLP  10              ;Add the base parameter
+                _ADDRP  DE              ;Add the col value
+                _ADDLP  STR_POS_LEN     ;Add the string buf length
+                _ADDLP  STR_POS         ;Add the buffer address
+                _CALL   ITOA            ;Convert the col value to a string
+                _ADDRP  HL
+                _CALL   PRINT           ;Print the string of the row value
+
+                ;Print the VT102 set position terminal char
+                LD      A,"H"
+                CALL    OUTC
+                RET
+
+
+
+; ***************************************************************************
+; Draws a line surrounded by plus signs (+-----+) at the given row, col and
+; for a given length.
+;       Param 1: row (byte)
+;       Param 2: col (byte)
+;       Param 3: length (byte)
+; ***************************************************************************
+DRAW_LINE:      _GETP   BC,0            ;B contains row, C contains col.
+                _ADDRP  BC              ;Add row,col as a parameter
+                _CALL   SET_POS         ;Sets the cursor position
+
+                LD      A,"+"           ;Print the first corner
+                CALL    OUTC
+                _GETP   DE,1            ;get the length of the line in D
+                LD      A,D             ;Load the length in A
+                SUB     2
+                LD      C,A             ;Initialize the counter
+                LD      A,"-"
+DRAW_LINE_CORE: CALL    OUTC            ;Print the core of the line
+                DEC     C
+                JP      NZ,DRAW_LINE_CORE       ;Loop to print the next "-".
+                LD      A,"+"
+                CALL    OUTC            ;Draw the second corner char.
+                RET
+
+
+; ***************************************************************************
+; Draws a framed row (|     |) at row (D) and col (E) of length (L). Note
+; that the content of the row between the pipes (|) is not erased.
+;       Param 1: row (byte)
+;       Param 2: col (byte)
+;       Param 3: length (byte)
+; ***************************************************************************
+DRAW_ROW:       _GETP   HL,0            ;Load row in L and col in H
+                _ADDRP  HL
+                _CALL   SET_POS         ;Sets the cursor position
+
+                LD      A,"|"
+                CALL    OUTC            ;Draws the left hand pipe.
+
+                _GETP   DE,1            ;D contains the length
+                LD      A,D             ;Loads the length in A
+                ADD     H               ;Add the length to the col
+                DEC     A               ;Substract 1 (for the first pipes)
+                LD      H,A             ;Put the right pipe col value in L
+               
+                _ADDRP  HL 
+                _CALL   SET_POS         ;Sets the cursor position to (b,E+L-1).
+
+                LD      A,"|"
+                CALL    OUTC            ;Draws the right hand pipe.
+                RET
+
+
+
+; ***************************************************************************
+; Draws a rectangle at row (D) and col (E) of height (H) and length (L).
+;       Param 1: row (byte)
+;       Param 2: col (byte)
+;       Param 3: length (byte)
+;       Param 4: Height (byte)
+; ***************************************************************************
+DRAW_RECT:      _GETP   HL,0            ;Load col in H and row in L
+                _GETP   DE,1            ;Load height in D and length in E
+                LD      C,D             ;Set the line counter in C
+                LD      A,0             
+                CP      C               ;Check if height is 0
+                RET     Z               ;Return if the height is 0
+
+                _ADDRP  DE              ;height and length as param 1
+                _ADDRP  HL              ;col and row are param 0
+                _CALL   DRAW_LINE       ;Draw the line
+
+                DEC     C               ;First line written
+                RET     Z               ;Return if no more line to write
+
+DRAW_RECT_NEXT_ROW:
+                INC     L               ;Increment the line
+                DEC     C               ;Remove the line we will print
+                JR      Z,DRAW_RECT_LAST_LINE ;Draw the bottom line
+                
+                _ADDRP  DE              ;height and length are param 1
+                _ADDRP  HL              ;col and row are param 0
+                _CALL   DRAW_ROW        ;Draw the row
+
+                JR      DRAW_RECT_NEXT_ROW
+
+DRAW_RECT_LAST_LINE:
+                _ADDRP  DE              ;height and length are param 1
+                _ADDRP  HL              ;col and row are on the stack
+                _CALL   DRAW_LINE       ;Draw the line
+
+                RET
+
+#endif

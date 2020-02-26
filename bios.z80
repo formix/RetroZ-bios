@@ -5,7 +5,7 @@
 #include "thread.z80"
 #include "math.z80"
 #include "stdlib.z80"
-;#include "termdraw.z80"
+#include "termdraw.z80"
 
 DECIMAL_BUFSIZE EQU     6
 
@@ -33,7 +33,7 @@ MAIN:           CALL    SIO2_INIT
                 CALL    THREAD_INIT                
                 CALL    MATH_INIT
                 CALL    STDLIB_INIT
-;                CALL    TERMDRAW_INIT
+                CALL    TERMDRAW_INIT
 
                 ;Wait one second while the host get ready.
                 _ADDLP  1000            ;Set wait time in ms as parameter
