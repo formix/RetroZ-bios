@@ -6,7 +6,7 @@ HEXA            DEFB    "0123456789abcdef"
 
 
 #code           _MAIN
-STDLIB_INIT:      RET
+STDLIB_INIT:    RET
 
 
 
@@ -28,26 +28,24 @@ ITOA:           _GETP   HL,0            ; Get the output string buffer.
                 DEC     HL              ; Move HL at the end of str buffer.
                 LD      (HL),0          ; Put a NULL terminason string in HL.
 
-                _GETP   BC,2            ; Converted value param
-                _GETP   DE,3            ; Conversion base param
+                _GETP   BC,2            ; Get the integer value in BC
+                _GETP   DE,3            ; Get the conversion base in DE
 
                 ; Do the modulo operation with the base to get the character
                 ; index in the HEXA array (see above in the _DATA code segment).
-ITOA_DECODE:    PUSH    HL              ; Save current string position.
-                PUSH    DE              ; Add param on the stack (divisor).
-                PUSH    BC              ; Add param on the stack (divised).
-                CALL    MOD16           ; After the mod, the chr index is in HL
-                                        ; Now: HL is remains, BC is quotient.
-                POP     DE              ; Throw divised value away.                
+ITOA_DECODE:    PUSH    DE              ; Save the conversion base 
+                PUSH    HL              ; Save current string position.
+                CALL    BC_DIVBY_DE     ; Divide the value by the conv. base.
+                                        ; Now: HL=remainder, BC=quotient.
 
                 ; The caracter index in HL, we now have to add it to the stack.
-                LD      DE,HEXA 
+                LD      DE,HEXA         ; Load the HEXA string address into DE 
                 ADD     HL,DE           ; Move HL to the hex char address
-                POP     DE              ; Get the divisor(base) back into DE
-                LD      A,(HL)          ; Get the character into A and
+                LD      A,(HL)          ; Get the digit into A and
                 POP     HL              ; Get back the string position
                 DEC     HL              ; Moves string pointer one char
-                LD      (HL),A          ; Put the next char in (HL)
+                LD      (HL),A          ; Put the digit in string target (HL)
+                POP     DE              ; Restore the conversion base
 
                 ; BC now contains the quotient, which is the new value we want
                 ; to divide by the base for the next iteration.

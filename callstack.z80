@@ -77,6 +77,10 @@ _PC             DEFL    0
                 ENDM
 
 
+#endif
+
+#if !defined(_PUSH)
+
 #code           _MAIN_FOOTER
 
 ;Save all registers
@@ -101,3 +105,4 @@ _POP:           POP     HL
                 RET
 
 #endif
+

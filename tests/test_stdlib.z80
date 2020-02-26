@@ -1,0 +1,52 @@
+#target bin
+
+;layout
+#code   _HEADER
+#code   _PROGRAM
+#code   _DATA
+#data   _HEAP,_DATA_end
+
+PRINT           EQU     $019C
+_PUSH           EQU     $051A
+_POP            EQU     $0524    
+
+#include "../callstack.z80"
+#include "../stdlib.z80"
+
+
+EXEC_TARGET     EQU     $8100
+
+
+
+
+#data           _HEAP
+                .PHASE  EXEC_TARGET+_PROGRAM_size+_DATA_size
+
+NUMBER_STRLEN   EQU     20
+NUMBER_STR      DEFS    NUMBER_STRLEN
+
+
+#code           _HEADER
+                DEFB    0
+                DEFW    _PROGRAM_size+_DATA_size
+                DEFW    EXEC_TARGET
+
+
+#code           _DATA
+
+
+#code           _PROGRAM
+                
+                _ADDLP  10      ;conversion base
+                _ADDLP  7234    ;the number to convert to a string
+                _ADDLP  NUMBER_STRLEN ;the buffer length
+                _ADDLP  NUMBER_STR ;the number string
+                _CALL   ITOA
+                
+                _ADDRP  HL
+                _CALL   PRINT
+
+LOOP:           JR      LOOP
+                
+
+

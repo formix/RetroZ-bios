@@ -19,7 +19,7 @@ PROG_SIZE       DEFS    2
                 JP      MAIN
 
 #code           _DATA
-BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.5.0",10,13
+BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.6.0",10,13
                 DEFB    "By J.P. Gravel, 2019",10,13,10,13
                 DEFB    "Waiting for program...",10,13,0
 
@@ -63,6 +63,7 @@ WAIT_PROG_START:
                 CALL    INPC
                 LD      (PROG_ADDR+1),A
 
+
                 ;Load the program into memory
                 LD      BC,(PROG_SIZE)  ;Set the byte counter.
                 LD      DE,(PROG_ADDR)  ;Set the destination address.
@@ -71,21 +72,21 @@ READ_NEXT_BYTE: CALL    INPC            ;Read the next byte.
 NO_DOT:         INC     DE              ;Increment the dest. address.
                 DEC     BC              ;Decrement the byte count.
                 LD      A,B
-                OR      C               ;BC == 0?
-                JR      Z,PROG_LOADED   ;TRUE:  launch the program.
-                JR      READ_NEXT_BYTE  ;FALSE: read the next byte.
+                OR      C               ;if BC == 0
+                JR      NZ,READ_NEXT_BYTE ;FALSE: read the next byte.
 
 PROG_LOADED:
                 ;Print the loaded program from RAM
                 CALL    PRINT_ENDL
                 _ADDLP  (PROG_SIZE)     ;parameter 1
                 _ADDLP  (PROG_ADDR)     ;parameter 0
-                _CALL    MEMDUMP
+                _CALL   MEMDUMP
                 CALL    PRINT_ENDL
                 CALL    PRINT_ENDL
                 _ADDLP  PROG_LOADED_STR
                 _CALL   PRINT
-            
+
+                ;Start the program loaded.            
                 LD      HL,(PROG_ADDR)
                 JP      HL              ;Jump to the loaded program!
 
@@ -93,28 +94,25 @@ PROG_LOADED:
 ; Dump the memory content in hexa to the output.
 ; 0: Start address
 ; 1: byte count
-MEMDUMP:        _GETP   HL,0
-                _GETP   BC,1
-
+MEMDUMP:
                 ;Print destination address
-                CALL    _PUSH
                 LD      A,"0"
                 CALL    OUTC
                 LD      A,"x"
                 CALL    OUTC
+                _GETP   HL,0            ;Load start address in HL
                 _ADDLP  16              ;Conversion base 16 param
                 _ADDRP  HL              ;Convert the start address
                 _ADDLP  DECIMAL_BUFSIZE ;The buffer size
                 _ADDLP  DECIMAL_BUF     ;The target string
                 _CALL   ITOA            ;Convert to hexadecimal into HL
                 _ADDRP  HL              ;Set the string to print param
-                CALL    PRINT           ;Print the start address
+                _CALL   PRINT           ;Print the start address
                 LD      A,';'
                 CALL    OUTC
-                CALL    _POP
                 
                 ;Print byte count
-                CALL    _PUSH
+                _GETP   BC,1            ;Load the byte count in BC
                 _ADDLP  10              ;Conversion base 10 param
                 _ADDRP  BC              ;Byte count param
                 _ADDLP  DECIMAL_BUFSIZE ;The buffer size
@@ -124,21 +122,25 @@ MEMDUMP:        _GETP   HL,0
                 _CALL   PRINT           ;Print the byte count value.
                 LD      A,'b'
                 CALL    OUTC
-                CALL    PRINT_ENDL
-                CALL    _POP
+                _CALL   PRINT_ENDL
+
 
                 LD      IX,0            ;Initialize word counter
+                _GETP   HL,0            ;Load start address in HL
+                _GETP   BC,1            ;Load the byte count in BC
 MEMDUMP_1: 
                 ;Print first byte
-                CALL    _PUSH
+                LD      DE,0
                 LD      A,(HL)
-                _ADDRP  AF
+                LD      D,A
+                PUSH    HL
+                _ADDRP  DE
                 _CALL   TOHEX
                 LD      A,H
                 CALL    OUTC
                 LD      A,L
                 CALL    OUTC
-                CALL    _POP
+                POP     HL
              
                 INC     HL              ;Moving forward
                 DEC     BC
@@ -148,14 +150,17 @@ MEMDUMP_1:
                 RET     Z               ;When Byte count is zero, we are done
 
                 ;Print second byte 
-                CALL    _PUSH
+                LD      DE,0
                 LD      A,(HL)
-                CALL    TOHEX
+                LD      D,A
+                PUSH    HL
+                _ADDRP  DE
+                _CALL   TOHEX
                 LD      A,H
                 CALL    OUTC
                 LD      A,L
                 CALL    OUTC
-                CALL    _POP
+                POP     HL
 
                 INC     HL              ;Moving forward
                 DEC     BC
