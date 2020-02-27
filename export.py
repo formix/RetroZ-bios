@@ -24,8 +24,9 @@ def main():
 # Returns the set of labels from the exported_labels_path file.
 def load_exported_labels(exported_labels_path):
     if not os.path.isfile(exported_labels_path):
-        eprint(f"WARNING: The file '{exported_labels_path}' does not exist. ", end="")
-        eprint("All labels from the symbol section will be generated.")
+        if exported_labels_path != "-":
+            eprint(f"WARNING: The file '{exported_labels_path}' does not exist. ", end="")
+            eprint("All labels from the symbol section will be generated.")
         return set()
     with open(exported_labels_path) as labels_file:
         return set([label.strip() for label in labels_file])
