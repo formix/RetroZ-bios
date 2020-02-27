@@ -54,20 +54,7 @@ MUL8_SKIP:      SLA     E               ; shift E to the left, shifting in 0.
                 JR      MUL8_LOOP
                 ; RETURNS WITHIN MUL8_LOOP
 
-
-; ***************************************************************************
-; Multiply two WORD parameters and return the result in DEHL.
-;       Inputs: Value1: WORD, the first number.
-;               Value2: WORD, the second number.
-;       Outputs: A DWORD containing the multiplication result in DEHL.
-; ***************************************************************************
-MUL16:          LD      IY,2
-                ADD     IY,SP
-                LD      C,(IY)
-                LD      B,(IY+1)
-                LD      E,(IY+2)
-                LD      D,(IY+3)
-
+MUL16:
 MUL_BC_DE_DEHL:
 ; BC*DE --> DEHL
 ;  ~544.887cc as calculated in jacobly's test
@@ -235,31 +222,13 @@ Mul_BC_DE_DEHL_FunkyCarry:
 
 
 ; ***************************************************************************
-; Divides two WORD parameters and return the quotient in HL.
-;       Inputs: divided: WORD, the divided number.
-;               divisor: WORD, the divisor number.
-;       Outputs: The quotient in HL.
-;                The remainder in DE.
-; ***************************************************************************
-DIV16:          LD      IY,2
-                ADD     IY,SP
-                LD      C,(IY)
-                LD      B,(IY+1)
-                LD      E,(IY+2)
-                LD      D,(IY+3)
-                CALL    BC_DIVBY_DE
-                EX      DE,HL
-                LD      L,C
-                LD      H,B
-                RET
-
-; ***************************************************************************
 ; Divides two WORD parameters and return the remainder in HL.
 ;       Inputs: divided: WORD, the divided number.
 ;               divisor: WORD, the divisor number.
 ;       Outputs: The remainder in HL.
 ;                The quotien in BC.
 ; ***************************************************************************
+DIV16:
 BC_DIVBY_DE:
 ; Source http://z80-heaven.wikidot.com/advanced-math#toc29
 ; BC/DE ==> BC, remainder in HL

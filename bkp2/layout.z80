@@ -1,7 +1,0 @@
-#target         rom
-#data           _HEAP,$8000
-#code           _BOOT,$0000,$0C
-#code           _INTERRUPTS,*,$20
-#code           _MAIN
-#code           _DATA
-
