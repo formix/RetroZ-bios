@@ -48,27 +48,27 @@ MAIN:           CALL    SIO2_INIT
 WAIT_PROG_START:
                 ;Loop until the prog start character is 
                 ;recieved (character NULL)
-                CALL    INPC
+                CALL    INPA
                 OR      A
                 JR      NZ,WAIT_PROG_START
 
                 ;Load the program size in DE
-                CALL    INPC
+                CALL    INPA
                 LD      (PROG_SIZE),A
-                CALL    INPC
+                CALL    INPA
                 LD      (PROG_SIZE+1),A
                 
                 ;Load the program start address
-                CALL    INPC
+                CALL    INPA
                 LD      (PROG_ADDR),A
-                CALL    INPC
+                CALL    INPA
                 LD      (PROG_ADDR+1),A
 
 
                 ;Load the program into memory
                 LD      BC,(PROG_SIZE)  ;Set the byte counter.
                 LD      DE,(PROG_ADDR)  ;Set the destination address.
-READ_NEXT_BYTE: CALL    INPC            ;Read the next byte.
+READ_NEXT_BYTE: CALL    INPA            ;Read the next byte.
                 LD      (DE),A          ;Put the byte in the dest. address.
 NO_DOT:         INC     DE              ;Increment the dest. address.
                 DEC     BC              ;Decrement the byte count.
