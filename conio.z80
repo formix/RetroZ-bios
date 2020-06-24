@@ -15,14 +15,14 @@
 ;; (sio2.z80) or any other character generating library.                   ;;
 ;;                                                                         ;;
 ;; This library declares a set of subroutines to add or remove characters  ;;
-;; from the character buffer and prints characters using the OUTC          ;;
+;; from the character buffer and prints characters using the OUTA          ;;
 ;; subroutine from a basic IO libraru (like sio2.z80). Exposed subroutines ;;
 ;; are:                                                                    ;;
 ;;                                                                         ;;
 ;;  - CONIO_INIT: Initializes the library variables.                       ;;
 ;;  - PUTCHAR: Adds a charcater to the character buffer.                   ;;
 ;;  - GETCHAR: Gets a character from the character buffer.                 ;;
-;;  - PRINT: Prints the zero terminated string recieved as param to OUTC.  ;;
+;;  - PRINT: Prints the zero terminated string recieved as param to OUTA.  ;;
 ;;  - CLS: Clears the screen                                               ;;
 ;;                                                                         ;;
 ;; The library also expose the following variable:                         ;;
@@ -95,7 +95,7 @@ BUF_NOT_FULL:   RET                     ;and exit ***.
 
 
 ; ***************************************************************************
-; Dump the buffer content to the character output using OUTC. This is a 
+; Dump the buffer content to the character output using OUTA. This is a 
 ; debug subroutine.
 ;       Input:  Nothing
 ;       Return: Nothing
@@ -105,7 +105,7 @@ DUMP_BUFFER:    LD      A,(BUFFER_STATE)
                 RET     Z               ;If the buffer is empty, return.
                 LD      HL,(BUFFER_TAIL);Make HL the buffer cursor
 DUMP_BYTE:      LD      A,(HL)
-                CALL    OUTC            ;Print the buffer byte
+                CALL    OUTA            ;Print the buffer byte
                 INC     L               ;Move the cursor to then next byte
                 RES     6,L             ;Modulo 64
                 LD      A,(BUFFER_HEAD)
@@ -118,9 +118,9 @@ DUMP_BYTE:      LD      A,(HL)
 ; Print end of line (\r\n)
 ; ***************************************************************************
 PRINT_ENDL:     LD      A,10
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,13
-                CALL    OUTC
+                CALL    OUTA
                 RET
 
 
@@ -156,7 +156,7 @@ BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
 
 ; ***************************************************************************
 ; Prints the NULL terminated string pointed by the parameter by calling
-; OUTC. OUTC is expected to be implemented in another module.
+; OUTA. OUTA is expected to be implemented in another module.
 ;       Input: The NULL terminated string address.
 ;       Output: nothing.
 ; ***************************************************************************
@@ -164,7 +164,7 @@ PRINT:          _GETP   HL,0            ;Load the string address into HL.
 _PRINT:         LD      A,(HL)          ;Reads the next character
                 OR      A               ;Check if that character is null.
                 RET     Z               ;If the null char is reached, exit.
-                CALL    OUTC            ;Print the character and 
+                CALL    OUTA            ;Print the character and 
                 INC     HL              ;move to the next char.
                 JR      _PRINT          ;Print the next char
 

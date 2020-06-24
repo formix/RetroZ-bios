@@ -65,21 +65,21 @@ TERMDRAW_INIT:  RET
 ; ***************************************************************************
 SET_COLOR:      _GETP   BC,0
                 LD      A,ESC
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"["
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"3"
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,C         ; Foreground
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,";"
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"4"
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,B         ; Background
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"m"
-                CALL    OUTC
+                CALL    OUTA
                 RET
 
                 
@@ -98,13 +98,13 @@ SET_COLOR:      _GETP   BC,0
 ; ***************************************************************************
 SET_ATTRIBUTE:  _GETP   HL,0
                 LD      A,ESC
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"["
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,(HL)
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"m"
-                CALL    OUTC
+                CALL    OUTA
                 RET
 
 
@@ -117,9 +117,9 @@ SET_POS:        _GETP   BC,0
 
                 ;Start the VT102 sequence
                 LD      A,ESC
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"["
-                CALL    OUTC
+                CALL    OUTA
 
                 ;Print the row
                 LD      E,B             ;Put the row value in E
@@ -134,7 +134,7 @@ SET_POS:        _GETP   BC,0
 
                 ;Print the VT102 row-col separator
                 LD      A,";"
-                CALL    OUTC
+                CALL    OUTA
 
                 ;Print the col
                 LD      E,C             ;Put the col value in E
@@ -149,7 +149,7 @@ SET_POS:        _GETP   BC,0
 
                 ;Print the VT102 set position terminal char
                 LD      A,"H"
-                CALL    OUTC
+                CALL    OUTA
                 RET
 
 
@@ -166,17 +166,17 @@ DRAW_LINE:      _GETP   BC,0            ;B contains row, C contains col.
                 _CALL   SET_POS         ;Sets the cursor position
 
                 LD      A,"+"           ;Print the first corner
-                CALL    OUTC
+                CALL    OUTA
                 _GETP   DE,1            ;get the length of the line in D
                 LD      A,D             ;Load the length in A
                 SUB     2
                 LD      C,A             ;Initialize the counter
                 LD      A,"-"
-DRAW_LINE_CORE: CALL    OUTC            ;Print the core of the line
+DRAW_LINE_CORE: CALL    OUTA            ;Print the core of the line
                 DEC     C
                 JP      NZ,DRAW_LINE_CORE       ;Loop to print the next "-".
                 LD      A,"+"
-                CALL    OUTC            ;Draw the second corner char.
+                CALL    OUTA            ;Draw the second corner char.
                 RET
 
 
@@ -192,7 +192,7 @@ DRAW_ROW:       _GETP   HL,0            ;Load row in L and col in H
                 _CALL   SET_POS         ;Sets the cursor position
 
                 LD      A,"|"
-                CALL    OUTC            ;Draws the left hand pipe.
+                CALL    OUTA            ;Draws the left hand pipe.
 
                 _GETP   DE,1            ;D contains the length
                 LD      A,D             ;Loads the length in A
@@ -204,7 +204,7 @@ DRAW_ROW:       _GETP   HL,0            ;Load row in L and col in H
                 _CALL   SET_POS         ;Sets the cursor position to (b,E+L-1).
 
                 LD      A,"|"
-                CALL    OUTC            ;Draws the right hand pipe.
+                CALL    OUTA            ;Draws the right hand pipe.
                 RET
 
 

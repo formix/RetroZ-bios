@@ -1,5 +1,6 @@
 #include "layout.z80"
 #include "callstack.z80"
+#include "bool.z80"
 #include "sio2.z80"
 #include "conio.z80"
 #include "thread.z80"
@@ -97,9 +98,9 @@ PROG_LOADED:
 MEMDUMP:
                 ;Print destination address
                 LD      A,"0"
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,"x"
-                CALL    OUTC
+                CALL    OUTA
                 _GETP   HL,0            ;Load start address in HL
                 _ADDLP  16              ;Conversion base 16 param
                 _ADDRP  HL              ;Convert the start address
@@ -109,7 +110,7 @@ MEMDUMP:
                 _ADDRP  HL              ;Set the string to print param
                 _CALL   PRINT           ;Print the start address
                 LD      A,';'
-                CALL    OUTC
+                CALL    OUTA
                 
                 ;Print byte count
                 _GETP   BC,1            ;Load the byte count in BC
@@ -121,7 +122,7 @@ MEMDUMP:
                 _ADDRP  HL              ;Set the string to print param.
                 _CALL   PRINT           ;Print the byte count value.
                 LD      A,'b'
-                CALL    OUTC
+                CALL    OUTA
                 _CALL   PRINT_ENDL
 
 
@@ -137,9 +138,9 @@ MEMDUMP_1:
                 _ADDRP  DE
                 _CALL   TOHEX
                 LD      A,H
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,L
-                CALL    OUTC
+                CALL    OUTA
                 POP     HL
              
                 INC     HL              ;Moving forward
@@ -157,9 +158,9 @@ MEMDUMP_1:
                 _ADDRP  DE
                 _CALL   TOHEX
                 LD      A,H
-                CALL    OUTC
+                CALL    OUTA
                 LD      A,L
-                CALL    OUTC
+                CALL    OUTA
                 POP     HL
 
                 INC     HL              ;Moving forward
@@ -181,7 +182,7 @@ MEMDUMP_1:
                 
                 ;Print space between words
 MEMDUMP_2:      LD      A,' '
-                CALL    OUTC
+                CALL    OUTA
 
                 JP      MEMDUMP_1 ;Print the next word
                 ;RETURN WITHIN LOOP

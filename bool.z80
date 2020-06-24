@@ -44,13 +44,18 @@ TRUE        equ     1   ; Match with NZ flag
     endm
 
 
-    macro _yep
+    macro _yes
     ; L is unchanged
     ; Z matches the boolean value of L.
     ld      a,l         ; prepare the operation
     or      a           ; Set or reset Z based on L content
     endm
 
+
+
+#if !defined(eq8)
+
+#code       _MAIN_FOOTER
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                ;;
@@ -308,3 +313,5 @@ _load32:
     ld      E,(IX+2)
     ld      D,(IX+3)
     ret
+
+#endif

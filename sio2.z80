@@ -32,10 +32,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-SIOA_C          EQU     $00
-SIOA_D          EQU     $01
-SIOB_C          EQU     $02
-SIOB_D          EQU     $03
+SIOA_C      EQU     $00		; SIO A control port
+SIOA		EQU     $01		; SIO A data port
+SIOB_C      EQU     $02		; SIO B control port
+SIOB        EQU     $03		; SIO B data port
  
 #code           _INTERRUPTS
                 DEFW    RX_CHA_AVAILABLE
@@ -43,34 +43,34 @@ SIOB_D          EQU     $03
 
 #code           _MAIN
 SIO2_INIT:
-        ; SIOA init
-	LD      A,$00            ; write 0
+    ; SIOA init
+	LD      A,$00           ; write 0
 	OUT     (SIOA_C),A
-	LD      A,$18            ; reset ext/status interrupts
-	OUT     (SIOA_C),A
-
-	LD      A,$04            ; write 4
-	OUT     (SIOA_C),A
-	LD      A,$C4            ; X64, no parity, 1 stop
+	LD      A,$18           ; reset ext/status interrupts
 	OUT     (SIOA_C),A
 
-	LD      A,$01            ; write 1
+	LD      A,$04           ; write 4
 	OUT     (SIOA_C),A
-;	LD      A,$18            ; interrupt on all recv
-        LD      A,$00            ; no interrupt on recv char
+	LD      A,$C4           ; X64, no parity, 1 stop
 	OUT     (SIOA_C),A
 
-	LD      A,$03            ; write 3
+	LD      A,$01           ; write 1
 	OUT     (SIOA_C),A
-	LD      A,$E1            ; 8 bits, auto enable, rcv enab
+;	LD      A,$18       	; interrupt on all recv
+    LD      A,$00        	; no interrupt on recv char
+	OUT     (SIOA_C),A
+
+	LD      A,$03			; write 3
+	OUT     (SIOA_C),A
+	LD      A,$E1        	; 8 bits, auto enable, rcv enab
 	OUT     (SIOA_C),A
 
 	LD      A,$05           ; write 5
 	OUT     (SIOA_C),A
-	LD      A,$EA		; dtr enable, 8 bits, tx enable, rts
+	LD      A,$EA			; dtr enable, 8 bits, tx enable, rts
 	OUT     (SIOA_C),A
 
-        ; SIOB init
+    ; SIOB init
 	LD      A,$00
 	OUT     (SIOB_C),A
 	LD      A,$18
@@ -101,82 +101,80 @@ SIO2_INIT:
 	LD      A,$EA
 	OUT     (SIOB_C),A
 
-        CALL    INT_INIT
+    CALL    INT_INIT
 
 ; ***** SIOA ENABLE INTERRUPTS *****
 SIO_EI:
-        LD      A, $03          ;write into WR0: select WR3
-        OUT     (SIOA_C),A
-        LD      A,$C1           ;RX 8bits, auto enable off, RX on
-        OUT     (SIOA_C),A
-        RET
+	LD      A, $03          ;write into WR0: select WR3
+	OUT     (SIOA_C),A
+	LD      A,$C1           ;RX 8bits, auto enable off, RX on
+	OUT     (SIOA_C),A
+	RET
 
 
 ; ***** SIOA DISABLE INTERRUPTS *****
 SIO_DI:
-        LD      A,$03           ;write into WR0: select WR3
-        OUT     (SIOA_C),A
-        LD      A,$C0           ;RX 8bit, auto enable off, RX off
-        OUT     (SIOA_C),A
-        RET
+	LD      A,$03           ;write into WR0: select WR3
+	OUT     (SIOA_C),A
+	LD      A,$C0           ;RX 8bit, auto enable off, RX off
+	OUT     (SIOA_C),A
+	RET
 
 
 INT_INIT:
-        LD      A,0
-        LD      I,A             ;load I reg with zero
-        IM      2               ;interrupt mode 2
-        EI                      ;enable interrupts
-        RET
+	LD      A,0
+	LD      I,A             ;load I reg with zero
+	IM      2               ;interrupt mode 2
+	EI                      ;enable interrupts
+	RET
 
 
 RTS_OFF:
-        LD      A,$05           ;write into WR0: select WR5
-        OUT     (SIOA_C),A
-        LD      A,$E8           ;DTR active, TX 8bit, BREAK off, TX on, RTS off
-        OUT     (SIOA_C),A
-        RET
+	LD      A,$05           ;write into WR0: select WR5
+	OUT     (SIOA_C),A
+	LD      A,$E8           ;DTR active, TX 8bit, BREAK off, TX on, RTS off
+	OUT     (SIOA_C),A
+	RET
 
 
 RTS_ON:
-        LD      A,$05           ;write into WR0: select WR5
-        OUT     (SIOA_C),A
-        LD      A,$EA           ;DTR active, TX 8bit, BREAK off, TX on, RTS on
-        OUT     (SIOA_C),A
-        RET
+	LD      A,$05           ;write into WR0: select WR5
+	OUT     (SIOA_C),A
+	LD      A,$EA           ;DTR active, TX 8bit, BREAK off, TX on, RTS on
+	OUT     (SIOA_C),A
+	RET
 
 START_RX_INT:
 	LD      A,$01            ; write 1
 	OUT     (SIOA_C),A
 	LD      A,$18            ; interrupt on all recv char
 	OUT     (SIOA_C),A
-        RET
+    RET
 
 STOP_RX_INT:
 	LD      A,$01            ; write 1
 	OUT     (SIOA_C),A
 	LD      A,$00            ; no interrupt at all on recv char
 	OUT     (SIOA_C),A
-        RET
+	RET
 
+; Saves all registers, read the typed character and call an extern subroutine
+; called KEY_PRESSED to handle the key.
 RX_CHA_AVAILABLE:
-        DI
-        EX      AF,AF'          ;backup AF
-        EXX
+	DI
+	EX		AF,AF'          ;backup AF
+	EXX
 WAIT_RX:
-	SUB	A		;Clears A
-	OUT	(SIOA_C),A	;Select RR0
-	IN	A,(SIOA_C)	;Read RR0
-	BIT	0,A		;Check if character is available
-	JR	Z,WAIT_RX	;Character not recieved yet, check again
-
-        IN      A,(SIOA_D)      ; A holds recieved character
-        
-        ; do something with the character
-        CALL    KEY_PRESSED
-
-        EXX
-        EX      AF,AF'
-        EI
+	SUB		A				;Clears A
+	OUT		(SIOA_C),A		;Select RR0
+	IN		A,(SIOA_C)		;Read RR0
+	BIT		0,A				;Check if character is available
+	JR		Z,WAIT_RX		;Character not recieved yet, check again
+	IN		A,(SIOA)		; A holds recieved character
+	CALL 	KEY_PRESSED		; do something with the character
+	EXX
+	EX	AF,AF'
+	EI
 	RETI
 
 
@@ -184,35 +182,106 @@ SPEC_RX_CONDITION:
         JP      $0000
 
 ; ***************************************************************************
-; Sends the content of register A to SIOA_D.
+; Sends the content of register A to SIOA.
 ; ***************************************************************************
-OUTC:
+OUTA:
 	PUSH    AF              ; Store character
 WAIT_TXA:        
-	SUB     A		; Wait for previous transmission to end
+	SUB     A				; Wait for previous transmission to end
 	OUT     (SIOA_C),A
 	IN      A,(SIOA_C)
 	BIT     2,A             ; Set Zero flag if transmitting a character
 	JR      Z,WAIT_TXA      ; Loop if still transmitting character
-	BIT	3,A             ; Set zero flag if no data carrier is detected
-	JR	Z,WAIT_TXA      ; Loop if no carrier detected.
-	BIT	5,A             ; Set zero flag if not clear to send
-	JR	Z,WAIT_TXA      ; Loop if not clear to send.
-        POP     AF              ; Retrieve character
-	OUT     (SIOA_D),A      ; Output the character
+	BIT		3,A             ; Set zero flag if no data carrier is detected
+	JR		Z,WAIT_TXA      ; Loop if no carrier detected.
+	BIT		5,A             ; Set zero flag if not clear to send
+	JR		Z,WAIT_TXA      ; Loop if not clear to send.
+	POP     AF              ; Retrieve character
+	OUT     (SIOA),A      	; Output the character
 	RET
 
 
 ; ***************************************************************************
-; Reads SIOA_D into A.
+; Reads SIOA into A. Blocks until a character is read.
+; ***************************************************************************
+INPA:
+	SUB		A				; Clears A
+INPA_WAIT:
+	OUT		(SIOA_C),A		; Select RR0
+	IN		A,(SIOA_C)		; Read RR0
+	BIT		0,A				; Check if character is available
+	JR		Z,INPA_WAIT     ; Character not recieved yet, check again
+    IN      A,(SIOA)      	; A holds recieved character
+	RET
+
+; ***************************************************************************
+; Sends the content of register A to SIOB.
+; ***************************************************************************
+OUTB:
+	PUSH    AF              ; Store character
+WAIT_TXB:        
+	SUB     A				; Wait for previous transmission to end
+	OUT     (SIOA_C),A
+	IN      A,(SIOA_C)
+	BIT     2,A             ; Set Zero flag if transmitting a character
+	JR      Z,WAIT_TXB      ; Loop if still transmitting character
+	BIT		3,A             ; Set zero flag if no data carrier is detected
+	JR		Z,WAIT_TXB      ; Loop if no carrier detected.
+	BIT		5,A             ; Set zero flag if not clear to send
+	JR		Z,WAIT_TXB      ; Loop if not clear to send.
+	POP     AF              ; Retrieve character
+	OUT     (SIOA),A      	; Output the character
+	RET
+
+
+; ***************************************************************************
+; Reads SIOB into A. Blocks until a character is read.
+; ***************************************************************************
+INPB:
+	SUB		A				; Clears A
+INPB_WAIT:
+	OUT		(SIOA_C),A		; Select RR0
+	IN		A,(SIOA_C)		; Read RR0
+	BIT		0,A				; Check if character is available
+	JR		Z,INPB_WAIT     ; Character not recieved yet, check again
+    IN      A,(SIOA)      	; A holds recieved character
+	RET
+
+
+; ***************************************************************************
+; Sends the content of register A to (C).
+; ***************************************************************************
+OUTC:
+	PUSH    AF              ; Store character
+	DEC		C				; Set C to the control port
+WAIT_TXC:        
+	SUB     A				; Wait for previous transmission to end
+	OUT     (C),A
+	IN      A,(C)
+	BIT     2,A             ; Set Zero flag if transmitting a character
+	JR      Z,WAIT_TXC      ; Loop if still transmitting character
+	BIT		3,A             ; Set zero flag if no data carrier is detected
+	JR		Z,WAIT_TXC      ; Loop if no carrier detected.
+	BIT		5,A             ; Set zero flag if not clear to send
+	JR		Z,WAIT_TXC      ; Loop if not clear to send.
+	POP     AF              ; Retrieve character
+	INC		C				; Set C to the data port.
+	OUT     (C),A      		; Output the character
+	RET
+
+
+; ***************************************************************************
+; Reads (C) into A. Blocks until a character is read.
 ; ***************************************************************************
 INPC:
-	SUB	A		;Clears A
-	OUT	(SIOA_C),A	;Select RR0
-	IN	A,(SIOA_C)	;Read RR0
-	BIT	0,A		;Check if character is available
-	JR	Z,INPC          ;Character not recieved yet, check again
-        IN      A,(SIOA_D)      ;A holds recieved character
-        RET
-
+	SUB		A				; Clears A
+	DEC		C				; Set C to the control port
+INPC_WAIT:
+	OUT		(C),A			; Select RR0
+	IN		A,(C)			; Read RR0
+	BIT		0,A				; Check if character is available
+	JR		Z,INPC_WAIT     ; Character not recieved yet, check again
+	INC		C				; Set C to the data port.
+    IN      A,(C)      		; A holds recieved character
+	RET
 #endif
