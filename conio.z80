@@ -60,8 +60,7 @@ CONIO_INIT:
 
 KEY_PRESSED:    _ADDRP  AF              ;Add AF as paremeter
                 _CALL   PUTCHAR         ;Add the character to the buffer.
-                RET                     ;Cannot use the JP trick with stack
-                                        ;parameters.
+                RET
 
 ; ***************************************************************************
 ; Enqueue the character from the stack into the character buffer. This 
