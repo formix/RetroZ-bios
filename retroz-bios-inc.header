@@ -35,46 +35,96 @@ _PC             DEFL    0
 
 
 ;Recursive macro that cleans &cnt parameters from the stack.
-                MACRO   _CLEANP &cnt
-                IF &cnt > 0
-                  EX      (SP),HL
-                  POP     HL
-                  _CLEANP {&cnt - 1}
-                ENDIF
-                ENDM
+    MACRO   _CLEANP &cnt
+    IF &cnt > 0
+      EX      (SP),HL
+      POP     HL
+      _CLEANP {&cnt - 1}
+    ENDIF
+    ENDM
 
 
 ;Loads the register &reg with the parameter at index &idx
 ;Since IY is used to get at parameters, its not possible to load
 ;a parameter into IX or IY using this macro. First parameter is at index 0.
-                MACRO   _GETP &reg, &idx
-                LD      IY,14
-                ADD     IY,SP
-                LD      &reg, (IY+{&idx * 2})
-                ENDM
+    MACRO   _GETP &reg, &idx
+    LD      IY,14
+    ADD     IY,SP
+    LD      &reg, (IY+{&idx * 2})
+    ENDM
 
 
 ;Return the content of &reg1 at the stack position of HL. The content of IY
 ;can not be returned using this macro.
-                MACRO   _RET_HL &reg1
-                LD      IY,0
-                ADD     IY,SP
-                LD      (IY+12),&reg1
-                RET
-                ENDM
+    MACRO   _RET_HL &reg1
+    LD      IY,0
+    ADD     IY,SP
+    LD      (IY+12),&reg1
+    RET
+    ENDM
 
 
 
 ;Return the content of &reg1 at the stack position of HL and the
 ;content of &reg2 at the DE stack position. The content of IX or IY cannot
 ;be returned by this macro.
-                MACRO   _RET_DEHL &reg1, &reg2
-                LD      IY,0
-                ADD     IY,SP
-                LD      (IY+12),&reg1
-                LD      (IY+10),&reg2
-                RET
-                ENDM
+    MACRO   _RET_DEHL &reg1, &reg2
+    LD      IY,0
+    ADD     IY,SP
+    LD      (IY+12),&reg1
+    LD      (IY+10),&reg2
+    RET
+    ENDM
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                      ;;
+;;  BOOLEAN OPERATIONS  ;;
+;;                      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    macro _and
+    ; L = H && L
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    and     h           ; with h
+    ld      l,a         ; get the result in l
+    endm
+
+    macro _or
+    ; L = H || L
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    or      h           ; with h
+    ld      l,a         ; get the result in l
+    endm
+
+
+    macro _xor
+    ; L = H ^ L
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    xor     h           ; with h
+    ld      l,a         ; get the result in l
+    endm
+
+
+    macro _not
+    ; L = !L
+    ; Z matches the boolean value of L.
+    ld      a,1         ; prepare the operation
+    xor     l           ; A = !L (XOR with 1 inverts the value)
+    ld      l,a         ; get the result in l
+    endm
+
+
+    macro _yes
+    ; L is unchanged
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    or      a           ; Set or reset Z based on L content
+    endm
+
 
 
 #endif

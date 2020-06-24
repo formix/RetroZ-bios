@@ -298,7 +298,7 @@ gte32:
 
 
 ; Save DEHL at the memory address pointed by IX, little endian.
-_save32:
+save32:
     ld      (IX+0),L
     ld      (IX+1),H
     ld      (IX+2),E
@@ -307,7 +307,7 @@ _save32:
 
 
 ; Load DEHL from the memory address pointed by IX, little endian.
-_load32:
+load32:
     ld      L,(IX+0)
     ld      H,(IX+1)
     ld      E,(IX+2)
