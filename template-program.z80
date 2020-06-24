@@ -1,0 +1,33 @@
+#target bin
+
+#include "callstack.z80"
+
+;layout
+#code   _HEADER
+#code   _PROGRAM
+#code   _DATA
+#data   _HEAP,_DATA_end
+
+EXEC_TARGET          EQU     $8100
+
+
+#data _HEAP
+    .PHASE  EXEC_TARGET+_PROGRAM_size+_DATA_size
+
+#code _HEADER
+    DEFB    0
+    DEFW    _PROGRAM_size+_DATA_size
+    DEFW    EXEC_TARGET
+
+
+#code _DATA
+    .PHASE  EXEC_TARGET+_PROGRAM_size
+
+
+#code _PROGRAM
+    .PHASE  EXEC_TARGET
+
+PROGRAM_LOOP:
+    JR      PROGRAM_LOOP
+
+END

@@ -1,0 +1,310 @@
+
+FALSE       equ     0   ; Match with Z flag
+TRUE        equ     1   ; Match with NZ flag
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                      ;;
+;;  BOOLEAN OPERATIONS  ;;
+;;                      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    macro _and
+    ; L = H && L
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    and     h           ; with h
+    ld      l,a         ; get the result in l
+    endm
+
+    macro _or
+    ; L = H || L
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    or      h           ; with h
+    ld      l,a         ; get the result in l
+    endm
+
+
+    macro _xor
+    ; L = H ^ L
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    xor     h           ; with h
+    ld      l,a         ; get the result in l
+    endm
+
+
+    macro _not
+    ; L = !L
+    ; Z matches the boolean value of L.
+    ld      a,1         ; prepare the operation
+    xor     l           ; A = !L (XOR with 1 inverts the value)
+    ld      l,a         ; get the result in l
+    endm
+
+
+    macro _yep
+    ; L is unchanged
+    ; Z matches the boolean value of L.
+    ld      a,l         ; prepare the operation
+    or      a           ; Set or reset Z based on L content
+    endm
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                ;;
+;;  8 BITS COMPARISON OPERATIONS  ;;
+;;                                ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; L = D == E
+; Z is set if TRUE
+eq8:
+    ld      l,TRUE      ; init the return value to TRUE
+    ld      a,d         ; prepare the operation
+    cp      e           ; compare with the other parameter
+    ret     z           ; return if D == E
+    ld      l,FALSE     ; else D != E then set return value to FALSE
+    ret                 ; return
+
+
+; L = D < E
+; C is set if TRUE
+lt8:
+    ld      l,TRUE      ; init the return value to TRUE
+    ld      a,d         ; prepare the operation
+    cp      e           ; compare with the other parameter
+    ret     c           ; return if D < E
+    ld      l,FALSE     ; else D >= E then set return value to FALSE
+    ret                 ; return
+
+
+; L = D > E
+; NC is set if TRUE
+gt8:
+    ld      l,TRUE      ; init the return value to TRUE
+    ld      a,d         ; prepare the operation
+    cp      e           ; compare with the other parameter
+    ret     nc          ; return if D > E
+    ld      l,FALSE     ; else D <= E then set return value to FALSE
+    ret                 ; return
+
+
+; L = D <= E
+; Either C or Z is set if TRUE
+lte8:
+    ld      l,TRUE      ; init the return value to TRUE
+    ld      a,d         ; prepare the operation
+    cp      e           ; compare with the other parameter
+    ret     c           ; return if D < E
+    ret     z           ; return if D == E
+    ld      l,FALSE     ; else D > E then set return value to FALSE
+    ret                 ; return
+
+
+; L = D >= E
+; Either NC or Z is set if TRUE
+gte8:
+    ld      a,d         ; prepare the operation
+    cp      e           ; compare with the other parameter
+    ld      l,TRUE      ; init the return value to TRUE
+    ret     nc          ; return if D > E
+    ret     z           ; return if D == E
+    ld      l,FALSE     ; else D < E then set return value to FALSE
+    ret                 ; return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                 ;;
+;;  16 BITS COMPARISON OPERATIONS  ;;
+;;                                 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; L = BC == DE
+; Z is set if TRUE
+eq16:
+    ld      a,b     ; prepare the operation with the upper byte
+    cp      d       ; compare with the other parameter
+    ld      l,FALSE ; init the return value to FALSE
+    ret     nz      ; return if B != D
+    ld      a,c     ; prepare the operation with the lower byte
+    cp      e       ; compare with the other parameter
+    ret     nz      ; return if C != E
+    ld      l,TRUE  ; else BC == DE then set the return value to TRUE
+    ret             ; return
+
+
+; L = D < E
+; C is set if TRUE
+lt16:
+    ld      a,b     ; prepare the operation with the upper byte
+    cp      d       ; compare with the other parameter
+    ld      l,TRUE  ; init the return value to TRUE
+    ret     c       ; return if B > D (implies that BC > DE)
+    ld      a,c     ; prepare the operation with the lower byte
+    cp      e       ; compare with the other parameter
+    ret     c       ; return if C < E
+    ld      l,FALSE ; else BC >= DE then set the return value to FALSE
+    ret             ; return
+
+
+; L = BC > DE
+; NC is set if TRUE
+gt16:
+    ld      a,b     ; prepare the operation with the upper byte
+    cp      d       ; compare with the other parameter
+    ld      l,FALSE ; init the return value to FALSE
+    ret     c       ; return if B > D (implies that BC > DE)
+    ld      a,c     ; prepare the operation with the lower byte
+    cp      e       ; compare with the other parameter
+    ret     c       ; return if C < E
+    ret     z       ; return id C == E
+    ld      l,TRUE  ; else BC >= DE then set the return value to FALSE
+    ret             ; return
+
+
+; L = BC <= DE
+; Either C or Z is set if TRUE
+lte16:
+    ld      a,b     ; prepare the operation with the upper byte
+    cp      d       ; compare with the other parameter
+    ld      l,TRUE  ; init the return value to TRUE
+    ret     c       ; return if B > D (implies that BC > DE)
+    ld      a,c     ; prepare the operation with the lower byte
+    cp      e       ; compare with the other parameter
+    ret     c       ; return if C < E
+    ret     z       ; return id C == E
+    ld      l,FALSE ; else BC >= DE then set the return value to FALSE
+    ret             ; return
+
+
+; L = BC >= DE
+; Either NC or Z is set if TRUE
+gte16:
+    ld      a,b     ; prepare the operation with the upper byte
+    cp      d       ; compare with the other parameter
+    ld      l,FALSE ; init the return value to FALSE
+    ret     c       ; return if B > D (implies that BC > DE)
+    ld      a,c     ; prepare the operation with the lower byte
+    cp      e       ; compare with the other parameter
+    ret     c       ; return if C < E
+    ld      l,TRUE  ; else BC >= DE then set the return value to FALSE
+    ret             ; return
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                 ;;
+;;  32 BITS COMPARISON OPERATIONS  ;;
+;;                                 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; L = IX[4] == IY[4]
+; Z is set if TRUE
+eq32:
+    ld      b,(IX+3)
+    ld      c,(IX+2)
+    ld      d,(IY+3)
+    ld      e,(IY+2)
+    call    eq16        ; Compare high words
+    ret     nz          ; return if HWX != HWY
+    ld      b,(IX+1)
+    ld      c,(IX+0)
+    ld      d,(IY+1)
+    ld      e,(IY+0)
+    jp      eq16       ; Compare lower words
+
+
+; L = IX[4] < IY[4]
+; C is set if TRUE
+lt32:
+    ld      b,(IX+3)
+    ld      c,(IX+2)
+    ld      d,(IY+3)
+    ld      e,(IY+2)
+    call    lt16        ; Compare high words
+    ret     c           ; return if HWX < HWY
+    ld      b,(IX+1)
+    ld      c,(IX+0)
+    ld      d,(IY+1)
+    ld      e,(IY+0)
+    jp      lt16       ; Compare lower words
+
+
+; L = IX[4] > IY[4]
+; NC is set if TRUE
+gt32:
+    ld      b,(IX+3)
+    ld      c,(IX+2)
+    ld      d,(IY+3)
+    ld      e,(IY+2)
+    call    gt16        ; Compare high words
+    ret     c           ; return if HWX > HWY
+    ld      b,(IX+1)
+    ld      c,(IX+0)
+    ld      d,(IY+1)
+    ld      e,(IY+0)
+    jp      gt16       ; Compare lower words
+
+
+; L = IX[4] <= IY[4]
+; Either C or Z is set if TRUE
+lte32:
+    ld      b,(IX+3)
+    ld      c,(IX+2)
+    ld      d,(IY+3)
+    ld      e,(IY+2)
+    call    lte16       ; Compare high words
+    ret     c           ; return if HWX <= HWY
+    ld      b,(IX+1)
+    ld      c,(IX+0)
+    ld      d,(IY+1)
+    ld      e,(IY+0)
+    jp      lte16      ; Compare lower words
+
+
+; L = IX[4] >= IY[4]
+; Either NC or Z is set if TRUE
+gte32:
+    ld      b,(IX+3)
+    ld      c,(IX+2)
+    ld      d,(IY+3)
+    ld      e,(IY+2)
+    call    gte16       ; Compare high words
+    ret     c           ; return if HWX >= HWY
+    ld      b,(IX+1)
+    ld      c,(IX+0)
+    ld      d,(IY+1)
+    ld      e,(IY+0)
+    jp      gte16      ; Compare lower words
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                              ;;
+;;  32 BITS HELPER SUBROUTINES  ;;
+;;                              ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+; Save DEHL at the memory address pointed by IX, little endian.
+_save32:
+    ld      (IX+0),L
+    ld      (IX+1),H
+    ld      (IX+2),E
+    ld      (IX+3),D
+    ret
+
+
+; Load DEHL from the memory address pointed by IX, little endian.
+_load32:
+    ld      L,(IX+0)
+    ld      H,(IX+1)
+    ld      E,(IX+2)
+    ld      D,(IX+3)
+    ret

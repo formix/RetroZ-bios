@@ -29,31 +29,33 @@ MATH_INIT:      RET                     ;Nothing to init
 
 ; ***************************************************************************
 ; Multiply the two byte parameters and return the result in a word.
-;       Inputs: Value1: byte, the first number.
-;               Value2: byte, the second number.
-;       Outputs: HL The multiplication result.
+;       Inputs: Param 0: the two byte values to multiply.
+;       Returns: The multiplication result in HL.
 ;
 ; I started implementing this myself and ended up copying that code 
 ; (and comments) from a website I forgot. Quite similar to what I did, 
 ; except for the stack parameters extraction. If you are the author of these
 ; lines please email me and I'll give you credit here.
 ; ***************************************************************************
-MUL8:           LD      IY,3            ; Sets IY to Value1 index.
-                ADD     IY,SP           ; Sets IY to the Value1 address.
-                LD      A,(IY)          ; Loads Value1 into A
-                LD      E,(IY+2)        ; Loads Value2 into E
-                LD      HL,0            ; set accumulator to 0
-                LD      D,H             ; (makes adding 'E' to 'accumulator' easier)
-MUL8_LOOP:      OR      A               ; while a is not 0, then:
-                RET     Z
-                RRA                     ; shift A right, carrying out the bottom bit
-                JR      NC,MUL8_SKIP    ; if 1 is carried out:
-                ADD     HL,DE           ; add E to the accumulator
-MUL8_SKIP:      SLA     E               ; shift E to the left, shifting in 0.
-                RL      D               
-                JR      MUL8_LOOP
-                ; RETURNS WITHIN MUL8_LOOP
+MUL8:
+    _GETP   DE,0
+    LD      A,D
+    LD      HL,0            ; set accumulator to 0
+    LD      D,H             ; (makes adding 'E' to 'accumulator' easier)
+MUL8_LOOP:      
+    OR      A               ; while a is not 0, then:
+    JR      Z,MUL8_END      ; we are done.
+    RRA                     ; shift A right, carrying out the bottom bit
+    JR      NC,MUL8_SKIP    ; if 1 is carried out:
+    ADD     HL,DE           ; add E to the accumulator
+MUL8_SKIP:
+    SLA     E               ; shift E to the left, shifting in 0.
+    RL      D               
+    JR      MUL8_LOOP
+MUL8_END:
+    _RET_HL HL
 
+    
 MUL16:
 MUL_BC_DE_DEHL:
 ; BC*DE --> DEHL

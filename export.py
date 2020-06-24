@@ -45,8 +45,7 @@ def eprint(*args, **kwargs):
 # Scans for the delimiter before producting label definitions.
 def get_label_addrs(lst_file, exported_labels, delimiter):
     for line in lst_file: # Skips all lines before the symbols delimiter
-        if line.startswith(delimiter):
-            break
+        if line.startswith(delimiter): break
     for line in lst_file: # Start generating label definitions.
         if '=' in line:
             segments = line.split('=')

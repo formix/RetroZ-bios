@@ -63,21 +63,20 @@ TERMDRAW_INIT:  RET
 ;               COLOR_CYAN
 ;               COLOR_WHITE     
 ; ***************************************************************************
-SET_COLOR:      _GETP   HL,0
+SET_COLOR:      _GETP   BC,0
                 LD      A,ESC
                 CALL    OUTC
                 LD      A,"["
                 CALL    OUTC
                 LD      A,"3"
                 CALL    OUTC
-                LD      A,(HL)
+                LD      A,C         ; Foreground
                 CALL    OUTC
                 LD      A,";"
                 CALL    OUTC
                 LD      A,"4"
                 CALL    OUTC
-                INC     HL
-                LD      A,(HL)
+                LD      A,B         ; Background
                 CALL    OUTC
                 LD      A,"m"
                 CALL    OUTC

@@ -13,4 +13,4 @@ echo -e "\n; +++ global symbols +++\n" >> out/retroz-bios-inc.z80
 ./export.py < out/bios.lst | sort >> out/retroz-bios-inc.z80
 echo -e "bios-inc.z80... done!"
 echo All done! Output files are in ./out enjoy!
-echo To call bios functions, include out/bios-inc.z80 in your assemler files.
+echo To call bios subroutines, include out/bios-inc.z80 in your assemler files.
