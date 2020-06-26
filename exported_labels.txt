@@ -70,3 +70,4 @@ lte32
 gte32
 save32
 load32
+CLEAR_CHAR_BUFFER

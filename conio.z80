@@ -154,6 +154,18 @@ BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
 
 
 ; ***************************************************************************
+; Clear the character buffer used by PUTCHAR and GETCHAR.
+;       Input:  Nothing
+;       Return: Nothing
+; ***************************************************************************
+CLEAR_CHAR_BUFFER:
+    LD      HL,(BUFFER_HEAD)
+    LD      (BUFFER_TAIL),HL
+    LD      HL,BUFFER_STATE
+    LD      (HL),BUFFER_EMPTY
+    RET
+
+; ***************************************************************************
 ; Prints the NULL terminated string pointed by the parameter by calling
 ; OUTA. OUTA is expected to be implemented in another module.
 ;       Input: The NULL terminated string address.

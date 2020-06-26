@@ -20,7 +20,7 @@ PROG_SIZE       DEFS    2
                 JP      MAIN
 
 #code           _DATA
-BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.6.2",10,13
+BIOS_WELCOME    DEFB    "RetroZ Bios Version 0.7.0",10,13
                 DEFB    "By J.P. Gravel, 2019",10,13,10,13
                 DEFB    "Waiting for program...",10,13,0
 

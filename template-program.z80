@@ -1,6 +1,6 @@
 #target bin
 
-#include "callstack.z80"
+#include "retroz-bios-inc.z80"
 
 ;layout
 #code   _HEADER
@@ -8,26 +8,34 @@
 #code   _DATA
 #data   _HEAP,_DATA_end
 
+; Set the RAM address where this program will be loaded. Change this value
+; if you want the program to be loaded somewhere else.
 EXEC_TARGET          EQU     $8100
 
 
 #data _HEAP
     .PHASE  EXEC_TARGET+_PROGRAM_size+_DATA_size
+    ; Define your variables below.
+
 
 #code _HEADER
-    DEFB    0
-    DEFW    _PROGRAM_size+_DATA_size
-    DEFW    EXEC_TARGET
+    ; The program header definitions. Do not change anything here.
+    DEFB    0                           ; Start of program
+    DEFW    _PROGRAM_size+_DATA_size    ; Program size
+    DEFW    EXEC_TARGET                 ; RAM address
 
 
 #code _DATA
     .PHASE  EXEC_TARGET+_PROGRAM_size
+    ; This section is reserved for constant data that will not change
+    ; during the life of your program.
 
 
 #code _PROGRAM
     .PHASE  EXEC_TARGET
+    ; This is the main program section. Code belo this line. Happy coding!
 
 PROGRAM_LOOP:
-    JR      PROGRAM_LOOP
+    JP      PROGRAM_LOOP
 
 END
