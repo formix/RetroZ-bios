@@ -2,7 +2,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                          RetroZ CONIO Library                           ;;
 ;;                                                                         ;;
-;; Version: 0.5.0                                                          ;;
+;; Version: 0.5.1                                                          ;;
 ;; https://github.com/formix/RetroZ-bios                                   ;;
 ;; By J.P. Gravel <jeanphilippe.gravel@gmail.com>                          ;;
 ;; 2019-09-25                                                              ;;
@@ -34,15 +34,15 @@
 
 ;requires callstack.z80 included
 
-BUFFER_EMPTY    EQU     01000000b
-BUFFER_READY    EQU     0
-BUFFER_FULL     EQU     00000100b
+BUFFER_MAX_LENGTH   EQU     64
+
 
 #data           _HEAP
-BUFFER          DEFS    64
-BUFFER_HEAD     DEFS    2
+BUFFER          DEFS    BUFFER_MAX_LENGTH
 BUFFER_TAIL     DEFS    2
-BUFFER_STATE    DEFS    1
+BUFFER_LENGTH   DEFS    1
+
+
 
 #code           _DATA
 VT102_CLS       DEFB    27,"[0m",27,"[2J",0
@@ -51,10 +51,9 @@ VT102_CLS       DEFB    27,"[0m",27,"[2J",0
 #code           _MAIN
 CONIO_INIT:
         LD      HL,BUFFER
-        LD      (BUFFER_HEAD),HL
         LD      (BUFFER_TAIL),HL
-        LD      A,BUFFER_EMPTY
-        LD      (BUFFER_STATE),A
+        SUB     A
+        LD      (BUFFER_LENGTH),A
         RET
 
 
@@ -71,26 +70,62 @@ KEY_PRESSED:    _ADDRP  AF              ;Add AF as paremeter
 ;               C is set if the call failed to add to the buf because it is
 ;               full.
 ; ***************************************************************************
-PUTCHAR:        LD      A,(BUFFER_STATE);Check if the buffer is full
-                CP      BUFFER_FULL
-                JR      NZ,DO_ENQUEUE   ;If the buffer is not full, DO_ENQUEUE
-                CP      A               ;set the Z flag,
-                RET                     ;and exit ***.
-DO_ENQUEUE:     LD      HL,(BUFFER_HEAD);Load the buffer address into HL
-                _GETP   DE,0            ;Get param 0 into DE
-                LD      A,D             ;Put the character from D into A
-                LD      (HL),A          ;Append the byte in the buffer
-                LD      A,BUFFER_READY
-                LD      (BUFFER_STATE),A;Buffer no longer empty here
-                INC     L               ;Move the head forward
-                RES     6,L             ;Modulo 64
-                LD      (BUFFER_HEAD),HL;Save the new head value
-                LD      A,(BUFFER_TAIL) ;Load tail index in A
-                CP      L               ;Compare head and tail indices
-                JP      NZ,BUF_NOT_FULL ;If the buffer is full 
-                LD      A,BUFFER_FULL   
-                LD      (BUFFER_STATE),A;then set the buffer state to FULL
-BUF_NOT_FULL:   RET                     ;and exit ***.
+PUTCHAR:        DI
+                LD      A,(BUFFER_LENGTH)
+                CP      BUFFER_MAX_LENGTH
+                JR      C,_PUTCHAR_NOT_FULL
+                SCF                     ;Sets the carry flag
+                EI
+                RET                     ;Returns with buffer full status (carry flag set).
+_PUTCHAR_NOT_FULL:
+                LD      E,A             ;Saves A (BUFFER_LENGTH) into E for later
+                LD      HL,(BUFFER_TAIL);Loads the buffer head
+                ADD     L               ;add the address low byte to the char count value.
+                RES     6,A             ;modulo 64 !!! Works only if BUFFER address is div. by 64
+                LD      L,A             ;HL is now at the tail of the circular buffer
+                _GETP   BC,0            ;Get param 0 into BC.
+                LD      A,C             ;Put the character from C into A.
+                LD      (HL),A          ;Append the byte in the buffer.
+                LD      A,E             ;E contains the buffer length (see above)
+                INC     A               ;Increments the BUFFER_LENGTH variable
+                LD      (BUFFER_LENGTH),A;BUFFER_LENGTH variable incremented.
+                CP      BUFFER_MAX_LENGTH;Sets Z if the buffer is full.
+                EI
+                RET
+
+
+; ***************************************************************************
+; Dequeue one character from the circular buffer on the stack
+;       Input:  - Nothing
+;       Return: If the buffer was not empty:
+;                   H = 1, L contains the character and Z is reset.
+;               else:
+;                   H = 0, L = 0 and Z is set.
+; ***************************************************************************
+GETCHAR:        DI
+                LD      A,(BUFFER_LENGTH)
+                OR      A               ;Checks if A == 0
+                JR      NZ,_GETCHAR_NOT_EMPTY
+                LD      H,A
+                LD      L,A
+                EI
+                RET
+_GETCHAR_NOT_EMPTY:
+                LD      E,A             ;Saves A (the BUFFER_LENGTH) into E for later
+                LD      HL,(BUFFER_TAIL)
+                LD      A,(HL)
+                LD      C,A             ;saves the characer into C
+                INC     L
+                RES     6,L             ;modulo 64 !!! Works only if BUFFER address is div. by 64
+                LD      (BUFFER_TAIL),HL
+                DEC     E               ;decrements the length
+                LD      A,E
+                LD      (BUFFER_LENGTH),A;Saves the new length into the variable.
+                LD      H,1
+                LD      L,C
+                LD      A,1
+                CP      A
+                _RET_HL HL
 
 
 ; ***************************************************************************
@@ -99,17 +134,17 @@ BUF_NOT_FULL:   RET                     ;and exit ***.
 ;       Input:  Nothing
 ;       Return: Nothing
 ; ***************************************************************************
-DUMP_BUFFER:    LD      A,(BUFFER_STATE)
-                CP      BUFFER_EMPTY
+DUMP_BUFFER:    LD      A,(BUFFER_LENGTH)
+                OR      A
                 RET     Z               ;If the buffer is empty, return.
                 LD      HL,(BUFFER_TAIL);Make HL the buffer cursor
-DUMP_BYTE:      LD      A,(HL)
+DUMP_BYTE:      LD      B,A             ;Loads the byte counter into B
+                LD      A,(HL)          ;Load the character to print into A
                 CALL    OUTA            ;Print the buffer byte
                 INC     L               ;Move the cursor to then next byte
                 RES     6,L             ;Modulo 64
-                LD      A,(BUFFER_HEAD)
-                CP      L               ;Check if cursor reached the head
-                RET     Z               ;Reached the head, return.
+                DEC     B
+                RET     Z               ;Reached the end, return.
                 JR      DUMP_BYTE       ;Print next byte
 
                 
@@ -123,35 +158,6 @@ PRINT_ENDL:     LD      A,10
                 RET
 
 
-; ***************************************************************************
-; Dequeue one character from the circular buffer on the stack
-;       Input:  - Nothing
-;       Return: Register L contains the character read from the buffer.
-;               If the buffer was empty, L contains NULL and Z is set.
-; ***************************************************************************
-GETCHAR:        DI                      ;Disable interrupts during execution
-                LD      A,(BUFFER_STATE);Check if the buffer is empty
-                CP      BUFFER_EMPTY
-                JR      NZ,DO_DEQUEUE   ;If the buffer is not empty, DO_DEQUEUE
-                XOR     A               ;Else set the Z flag,
-                LD      L,0             ;set the renurned character to null,
-                EI                      ;enable interrupts before leaving
-                RET                     ;and exit.
-DO_DEQUEUE:     LD      HL,(BUFFER_TAIL);Load the buf tail address into HL
-                LD      IY,(BUFFER_TAIL);and into IY
-                INC     L               ;Move the tail forward
-                RES     6,L             ;Modulo 64
-                LD      (BUFFER_TAIL),HL;Save the new tail value
-                LD      A,(BUFFER_HEAD) ;Load head index in A
-                CP      L               ;Compare head and tail indices
-                JP      NZ,BUF_NOT_EMPTY;If the buffer is not empty, jump. 
-                LD      A,BUFFER_EMPTY  ;else 
-                LD      (BUFFER_STATE),A;  set the buffer state to EMPTY.
-BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
-                LD      L,(IY)          ;Return the character value into L.
-                EI                      ;enable interrupts before leaving
-                RET                     ;and exit ***.
-
 
 ; ***************************************************************************
 ; Clear the character buffer used by PUTCHAR and GETCHAR.
@@ -159,10 +165,10 @@ BUF_NOT_EMPTY:  OR      A               ;Reset the Z flag.
 ;       Return: Nothing
 ; ***************************************************************************
 CLEAR_CHAR_BUFFER:
-    LD      HL,(BUFFER_HEAD)
+    LD      HL,BUFFER
     LD      (BUFFER_TAIL),HL
-    LD      HL,BUFFER_STATE
-    LD      (HL),BUFFER_EMPTY
+    SUB     A                         ;A=0
+    LD      (BUFFER_LENGTH),A
     RET
 
 ; ***************************************************************************
