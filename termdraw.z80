@@ -101,12 +101,11 @@ SET_ATTRIBUTE:  _GETP   HL,0
                 CALL    OUTA
                 LD      A,"["
                 CALL    OUTA
-                LD      A,(HL)
+                LD      A,L
                 CALL    OUTA
                 LD      A,"m"
                 CALL    OUTA
                 RET
-
 
 ; ***************************************************************************
 ; Sets the cursor postion
@@ -196,9 +195,9 @@ DRAW_ROW:       _GETP   HL,0            ;Load row in L and col in H
 
                 _GETP   DE,1            ;D contains the length
                 LD      A,D             ;Loads the length in A
-                ADD     H               ;Add the length to the col
+                ADD     L               ;Add the length to the col
                 DEC     A               ;Substract 1 (for the first pipes)
-                LD      H,A             ;Put the right pipe col value in L
+                LD      L,A             ;Put the right pipe col value in L
                
                 _ADDRP  HL 
                 _CALL   SET_POS         ;Sets the cursor position to (b,E+L-1).
@@ -213,39 +212,28 @@ DRAW_ROW:       _GETP   HL,0            ;Load row in L and col in H
 ; Draws a rectangle at row (D) and col (E) of height (H) and length (L).
 ;       Param 1: row (byte)
 ;       Param 2: col (byte)
-;       Param 3: length (byte)
-;       Param 4: Height (byte)
+;       Param 3: Height (byte)
+;       Param 4: length (byte)
 ; ***************************************************************************
-DRAW_RECT:      _GETP   HL,0            ;Load col in H and row in L
-                _GETP   DE,1            ;Load height in D and length in E
-                LD      C,D             ;Set the line counter in C
-                LD      A,0             
-                CP      C               ;Check if height is 0
-                RET     Z               ;Return if the height is 0
-
-                _ADDRP  DE              ;height and length as param 1
-                _ADDRP  HL              ;col and row are param 0
-                _CALL   DRAW_LINE       ;Draw the line
-
-                DEC     C               ;First line written
-                RET     Z               ;Return if no more line to write
-
-DRAW_RECT_NEXT_ROW:
-                INC     L               ;Increment the line
-                DEC     C               ;Remove the line we will print
-                JR      Z,DRAW_RECT_LAST_LINE ;Draw the bottom line
-                
-                _ADDRP  DE              ;height and length are param 1
-                _ADDRP  HL              ;col and row are param 0
-                _CALL   DRAW_ROW        ;Draw the row
-
-                JR      DRAW_RECT_NEXT_ROW
-
+DRAW_RECT:
+                _GETP   HL,0            ;Load height in D and length in E
+                _GETP   BC,1            ;Load col in H and row in L
+                LD      D,L
+                _ADDRP  DE              ;D = length, E ignored
+                _ADDRP  BC              ;B = row, C = col
+                _CALL   DRAW_LINE
+DRAW_RECT_ROW:
+                DEC     H               ;reduce the height by 1
+                JR      Z,DRAW_RECT_LAST_LINE
+                _ADDRP  DE              ;D = length, E ignored
+                INC     B               ;move to the next row
+                _ADDRP  BC              ;B = row, C = col
+                _CALL   DRAW_ROW
+                JR      DRAW_RECT_ROW
 DRAW_RECT_LAST_LINE:
-                _ADDRP  DE              ;height and length are param 1
-                _ADDRP  HL              ;col and row are on the stack
-                _CALL   DRAW_LINE       ;Draw the line
-
+                _ADDRP  DE              ;D = length, E ignored
+                _ADDRP  BC              ;B = row, C = col
+                _CALL   DRAW_LINE
                 RET
 
 #endif
