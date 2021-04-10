@@ -79,17 +79,17 @@ PUTCHAR:        DI
                 RET                     ;Returns with buffer full status (carry flag set).
 _PUTCHAR_NOT_FULL:
                 LD      E,A             ;Saves A (BUFFER_LENGTH) into E for later
-                LD      HL,(BUFFER_TAIL);Loads the buffer head
+                LD      HL,(BUFFER_TAIL);Loads the buffer tail
                 ADD     L               ;add the address low byte to the char count value.
                 RES     6,A             ;modulo 64 !!! Works only if BUFFER address is div. by 64
                 LD      L,A             ;HL is now at the tail of the circular buffer
                 _GETP   BC,0            ;Get param 0 into BC.
-                LD      A,C             ;Put the character from C into A.
+                LD      A,B             ;Put the character from B into A.
                 LD      (HL),A          ;Append the byte in the buffer.
                 LD      A,E             ;E contains the buffer length (see above)
                 INC     A               ;Increments the BUFFER_LENGTH variable
-                LD      (BUFFER_LENGTH),A;BUFFER_LENGTH variable incremented.
-                CP      BUFFER_MAX_LENGTH;Sets Z if the buffer is full.
+                LD      (BUFFER_LENGTH),A ;BUFFER_LENGTH variable incremented.
+                CP      BUFFER_MAX_LENGTH ;Sets Z if the buffer is full.
                 EI
                 RET
 
