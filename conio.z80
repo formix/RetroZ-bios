@@ -38,9 +38,11 @@ BUFFER_MAX_LENGTH   EQU     64
 
 
 #data           _HEAP
-BUFFER          DEFS    BUFFER_MAX_LENGTH
+BUFFER          DEFS    64
+BUFFER_HEAD     DEFS    2
 BUFFER_TAIL     DEFS    2
-BUFFER_LENGTH   DEFS    1
+BUFFER_SIZE     DEFS    1
+CHAR_HANDLER    DEFS    2
 
 
 
@@ -50,82 +52,69 @@ VT102_CLS       DEFB    27,"[0m",27,"[2J",0
 
 #code           _MAIN
 CONIO_INIT:
-        LD      HL,BUFFER
-        LD      (BUFFER_TAIL),HL
-        SUB     A
-        LD      (BUFFER_LENGTH),A
-        RET
+    LD      HL,BUFFER
+    LD      (BUFFER_HEAD),HL
+    LD      (BUFFER_TAIL),HL
+    LD      A,0
+    LD      (BUFFER_SIZE),A
+    LD      HL,PUTCHAR
+    LD      (CHAR_HANDLER),HL
+    RET
 
 
-KEY_PRESSED:    _ADDRP  AF              ;Add AF as paremeter
-                _CALL   PUTCHAR         ;Add the character to the buffer.
-                RET
-
-; ***************************************************************************
-; Enqueue the character from the stack into the character buffer. This 
-; subroutine should be called with interrupts disabled.
-;       Input:  - The character (high byte), Don't care (low byte)
-;       Return: Nothing
-;       Flags:  Z is set if the buffer is full after the call
-;               C is set if the call failed to add to the buf because it is
-;               full.
-; ***************************************************************************
-PUTCHAR:        DI
-                LD      A,(BUFFER_LENGTH)
-                CP      BUFFER_MAX_LENGTH
-                JR      C,_PUTCHAR_NOT_FULL
-                SCF                     ;Sets the carry flag
-                EI
-                RET                     ;Returns with buffer full status (carry flag set).
-_PUTCHAR_NOT_FULL:
-                LD      E,A             ;Saves A (BUFFER_LENGTH) into E for later
-                LD      HL,(BUFFER_TAIL);Loads the buffer tail
-                ADD     L               ;add the address low byte to the char count value.
-                RES     6,A             ;modulo 64 !!! Works only if BUFFER address is div. by 64
-                LD      L,A             ;HL is now at the tail of the circular buffer
-                _GETP   BC,0            ;Get param 0 into BC.
-                LD      A,B             ;Put the character from B into A.
-                LD      (HL),A          ;Append the byte in the buffer.
-                LD      A,E             ;E contains the buffer length (see above)
-                INC     A               ;Increments the BUFFER_LENGTH variable
-                LD      (BUFFER_LENGTH),A ;BUFFER_LENGTH variable incremented.
-                CP      BUFFER_MAX_LENGTH ;Sets Z if the buffer is full.
-                EI
-                RET
-
+KEY_PRESSED:
+    LD      HL,(CHAR_HANDLER)
+    JP      (HL)                ;Add the character to the buffer.
+    ; No RET needed, need to jump a subroutine that has RET in it.
 
 ; ***************************************************************************
-; Dequeue one character from the circular buffer on the stack
-;       Input:  - Nothing
-;       Return: If the buffer was not empty:
-;                   H = 1, L contains the character and Z is reset.
-;               else:
-;                   H = 0, L = 0 and Z is set.
+; Puts a character from reg A in the console circular buffer.
+; Inputs: Reg A, the character to add to the buffer.
+; Return: L=0 if the method failed to add the caracter.
+; Return: L=1 if the method succeeded to add the character to the buffer.
+; Change: H,L,E
 ; ***************************************************************************
-GETCHAR:        DI
-                LD      A,(BUFFER_LENGTH)
-                OR      A               ;Checks if A == 0
-                JR      NZ,_GETCHAR_NOT_EMPTY
-                LD      H,A
-                LD      L,A
-                EI
-                RET
-_GETCHAR_NOT_EMPTY:
-                LD      E,A             ;Saves A (the BUFFER_LENGTH) into E for later
-                LD      HL,(BUFFER_TAIL)
-                LD      A,(HL)
-                LD      C,A             ;saves the characer into C
-                INC     L
-                RES     6,L             ;modulo 64 !!! Works only if BUFFER address is div. by 64
-                LD      (BUFFER_TAIL),HL
-                DEC     E               ;decrements the length
-                LD      A,E
-                LD      (BUFFER_LENGTH),A;Saves the new length into the variable.
-                LD      H,1
-                LD      L,C
-                LD      A,1
-                CP      A
-                _RET_HL HL
+PUTCHAR:
+    DI                          ; Disable interrupts
+    LD      E,A                 ; Save A value
+    LD      A,(BUFFER_SIZE)
+    CP      64                  ; Check if the buffer is full
+    LD      A,E                 ; Get A back
+    LD      L,0                 ; Set failure flag
+    EI                          ; Enable interrupts
+    RET     Z                   ; Buffer full, we return
+    LD      HL,(BUFFER_HEAD)
+    LD      (HL),A              ; Add the character to the buffer head
+    INC     HL                  ; Move the buffer head forward
+    RES     6,L                 ; Modulo 64 given BUFFER address is divisible by 64
+    LD      (BUFFER_HEAD),HL    ; Save the new BUFFER_HEAD
+    LD      HL,BUFFER_SIZE
+    INC     (HL)                ; Increment the buffer size by one
+    LD      L,1                 ; Set success flag
+    EI                          ; Enable interrupts
+    RET
+
+
+; ***************************************************************************
+; Gets a character from the console circular buffer into A.
+; Return: L=0, if the method failed to get a character in A (buffer empty).
+; Return: L=1, if the method succeeded to get a character in A.
+; Change: H,L,E
+; ***************************************************************************
+GETCHAR:
+    LD      A,(BUFFER_SIZE)
+    OR      A                   ; Check if the buffer is empty
+    LD      L,A                 ; Set failure flag (since A contains 0, then L = 0)
+    RET     Z                   ; Buffer empty, we return
+    LD      HL,(BUFFER_TAIL)
+    LD      A,(HL)              ; Get the character at the tail
+    INC     L                   ; Move the buffer tail forward
+    RES     6,L                 ; Modulo 64 given BUFFER address is divisible by 64
+    LD      (BUFFER_TAIL),HL    ; Save the new BUFFER_TAIL
+    LD      HL,BUFFER_SIZE
+    DEC     (HL)                ; Decrement the buffer size by one
+    LD      L,1                 ; Set success flag
+    RET
 
 
 ; ***************************************************************************
@@ -134,28 +123,34 @@ _GETCHAR_NOT_EMPTY:
 ;       Input:  Nothing
 ;       Return: Nothing
 ; ***************************************************************************
-DUMP_BUFFER:    LD      A,(BUFFER_LENGTH)
-                OR      A
-                RET     Z               ;If the buffer is empty, return.
-                LD      HL,(BUFFER_TAIL);Make HL the buffer cursor
-DUMP_BYTE:      LD      B,A             ;Loads the byte counter into B
-                LD      A,(HL)          ;Load the character to print into A
-                CALL    OUTA            ;Print the buffer byte
-                INC     L               ;Move the cursor to then next byte
-                RES     6,L             ;Modulo 64
-                DEC     B
-                RET     Z               ;Reached the end, return.
-                JR      DUMP_BYTE       ;Print next byte
+DUMP_BUFFER:
+    LD      A,(BUFFER_SIZE)
+    LD      C,A
+    XOR     A                   ; A = 0
+    CP      C                   ; Check if C == 0
+    LD      L,0                 ; Return failed
+    RET     Z                   ; Return, nothing to print.
+    LD      L,1                 ; Set success flag
+    LD      DE,(BUFFER_TAIL)    ; Get the buffer tail
+DUMP_BUFFER_PRINT:
+    LD      A,(DE)              ; Get the character
+    CALL    OUTA                ; Print the character
+    DEC     C                   ; On character less to print
+    RET     Z                   ; No more characters we are done.
+    INC     E                   ; Move to the next char
+    RES     6,E                 ; modulo 64
+    JR      DUMP_BUFFER_PRINT
 
-                
+    
 ; ***************************************************************************
 ; Print end of line (\r\n)
 ; ***************************************************************************
-PRINT_ENDL:     LD      A,10
-                CALL    OUTA
-                LD      A,13
-                CALL    OUTA
-                RET
+PRINT_ENDL:     
+    LD      A,10
+    CALL    OUTA
+    LD      A,13
+    CALL    OUTA
+    RET
 
 
 
@@ -166,9 +161,10 @@ PRINT_ENDL:     LD      A,10
 ; ***************************************************************************
 CLEAR_CHAR_BUFFER:
     LD      HL,BUFFER
+    LD      (BUFFER_HEAD),HL
     LD      (BUFFER_TAIL),HL
     SUB     A                         ;A=0
-    LD      (BUFFER_LENGTH),A
+    LD      (BUFFER_SIZE),A
     RET
 
 ; ***************************************************************************
@@ -179,18 +175,18 @@ CLEAR_CHAR_BUFFER:
 ; ***************************************************************************
 PRINT:          _GETP   HL,0            ;Load the string address into HL.
 _PRINT:         LD      A,(HL)          ;Reads the next character
-                OR      A               ;Check if that character is null.
-                RET     Z               ;If the null char is reached, exit.
-                CALL    OUTA            ;Print the character and 
-                INC     HL              ;move to the next char.
-                JR      _PRINT          ;Print the next char
+    OR      A               ;Check if that character is null.
+    RET     Z               ;If the null char is reached, exit.
+    CALL    OUTA            ;Print the character and 
+    INC     HL              ;move to the next char.
+    JR      _PRINT          ;Print the next char
 
 
 ; ***************************************************************************
 ; Clear the screen and set the cursor home.
 ; ***************************************************************************
 CLS:            LD      HL,VT102_CLS
-                JR      _PRINT
+    JR      _PRINT
 
 
 

@@ -121,11 +121,28 @@ _PC             DEFL    0
     endm
 
 
-    macro _yes
-    ; L is unchanged
-    ; Z matches the boolean value of L.
+    macro   _jrt &addr
+    ; jump relative if true
+    ; If L == 1, JR to the specified address.
+    push    bc
+    ld      c,a
     ld      a,l         ; prepare the operation
     or      a           ; Set or reset Z based on L content
+    ld      a,c
+    pop     bc
+    jr      nz,&addr
+    endm
+
+    macro   _jrf &addr
+    ; jump relative if false
+    ; If L == 0, JR to the specified address.
+    push    bc
+    ld      c,a
+    ld      a,l         ; prepare the operation
+    or      a           ; Set or reset Z based on L content
+    ld      a,c
+    pop     bc
+    jr      z,&addr
     endm
 
 
