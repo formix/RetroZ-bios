@@ -42,7 +42,6 @@ BUFFER          DEFS    64
 BUFFER_HEAD     DEFS    2
 BUFFER_TAIL     DEFS    2
 BUFFER_SIZE     DEFS    1
-CHAR_HANDLER    DEFS    2
 
 
 
@@ -57,15 +56,17 @@ CONIO_INIT:
     LD      (BUFFER_TAIL),HL
     LD      A,0
     LD      (BUFFER_SIZE),A
-    LD      HL,PUTCHAR
-    LD      (CHAR_HANDLER),HL
     RET
 
 
 KEY_PRESSED:
-    LD      HL,(CHAR_HANDLER)
-    JP      (HL)                ;Add the character to the buffer.
-    ; No RET needed, need to jump a subroutine that has RET in it.
+    CALL    PUTCHAR
+    LD      A,L
+    OR      A
+    RET     NZ              ; Successfully added to the char buffer
+    LD      A,7             ; Emits a beep (BEL char) if failed to add to the char buffer.
+    CALL    OUTA
+    RET
 
 ; ***************************************************************************
 ; Puts a character from reg A in the console circular buffer.
