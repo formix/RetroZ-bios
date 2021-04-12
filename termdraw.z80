@@ -109,8 +109,8 @@ SET_ATTRIBUTE:  _GETP   HL,0
 
 ; ***************************************************************************
 ; Sets the cursor postion
-;       Param 1: row (byte)
-;       Param 2: col (byte)
+;       Param 1: col (byte)
+;       Param 2: row (byte)
 ; ***************************************************************************
 SET_POS:        _GETP   BC,0
 
