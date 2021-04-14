@@ -34,11 +34,11 @@
 
 ;requires callstack.z80 included
 
-BUFFER_MAX_LENGTH   EQU     64
+BUFFER_MAX_SIZE EQU     64
 
 
 #data           _HEAP
-BUFFER          DEFS    64
+BUFFER          DEFS    BUFFER_MAX_SIZE
 BUFFER_HEAD     DEFS    2
 BUFFER_TAIL     DEFS    2
 BUFFER_SIZE     DEFS    1
@@ -79,7 +79,7 @@ PUTCHAR:
     DI                          ; Disable interrupts
     LD      E,A                 ; Save A value
     LD      A,(BUFFER_SIZE)
-    CP      64                  ; Check if the buffer is full
+    CP      BUFFER_MAX_SIZE     ; Check if the buffer is full
     LD      A,E                 ; Get A back
     LD      L,0                 ; Set failure flag
     EI                          ; Enable interrupts
@@ -164,7 +164,7 @@ CLEAR_CHAR_BUFFER:
     LD      HL,BUFFER
     LD      (BUFFER_HEAD),HL
     LD      (BUFFER_TAIL),HL
-    SUB     A                         ;A=0
+    SUB     A               ;A=0
     LD      (BUFFER_SIZE),A
     RET
 
