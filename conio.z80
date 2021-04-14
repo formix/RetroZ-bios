@@ -105,7 +105,7 @@ PUTCHAR:
 GETCHAR:
     LD      A,(BUFFER_SIZE)
     OR      A                   ; Check if the buffer is empty
-    LD      L,A                 ; Set failure flag (since A contains 0, then L = 0)
+    LD      L,A                 ; Set failure flag (if A contains 0, then L = 0, otherise we don't care)
     RET     Z                   ; Buffer empty, we return
     LD      HL,(BUFFER_TAIL)
     LD      A,(HL)              ; Get the character at the tail
