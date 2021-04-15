@@ -16,6 +16,7 @@
 ;;  - DRAW_ROW: Draws two pipes for a given row length. Ex: |     |        ;;
 ;;  - DRAW_RECT: Draws a rectagle made of DRAW_LINEs and DRAW_ROWs         ;;
 ;;                                                                         ;;
+;;  https://www.ispltd.org/mini_howto:ansi_terminal_codes                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
