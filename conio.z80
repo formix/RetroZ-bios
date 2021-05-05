@@ -183,10 +183,12 @@ _PRINT:         LD      A,(HL)          ;Reads the next character
     JR      _PRINT          ;Print the next char
 
 
+
 ; ***************************************************************************
 ; Clear the screen and set the cursor home.
 ; ***************************************************************************
-CLS:            LD      HL,VT102_CLS
+CLS:            
+    LD      HL,VT102_CLS
     JR      _PRINT
 
 
