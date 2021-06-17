@@ -1,0 +1,39 @@
+
+
+SIOA_C      EQU     $00		; SIO A control port
+SIOA		EQU     $01		; SIO A data port
+SIOB_C      EQU     $02		; SIO B control port
+SIOB        EQU     $03		; SIO B data port
+
+
+    macro sio2_write_config     &port, &register, &value
+    ld a,&register
+    out (&port),a
+    ld a,$value
+    out (&port),a
+    endm
+
+    macro sio2_read_config      &port, &register
+    ld a,&register
+    out (&port)
+    in a,(&port)
+    endm
+
+
+sio2_init_portA:
+    sio2_write_config SIOA_C, $00, $18      ; Reset port A
+    sio2_write_config SIOA_C, $01, $00      ; no interrupt on recv char
+    sio2_write_config SIOA_C, $03, $E1      ; 8 bits, auto enable, rcv enable
+    sio2_write_config SIOA_C, $04, $C4      ; X64, no parity, 1 stop bit
+    sio2_write_config SIOA_C, $05, $EA      ; dtr enable, 8 bits, tx enable, rts
+    ret
+
+sio2_init_portB:
+    sio2_write_config SIOB_C, $00, $18      ; Reset port A
+    sio2_write_config SIOB_C, $01, $18      ; interrupt on all recv chararters
+    sio2_write_config SIOB_C, $02, $0C      ; Sets the interrupt vector address
+    sio2_write_config SIOB_C, $03, $E1      ; 8 bits, auto enable, rcv enable
+    sio2_write_config SIOB_C, $04, $C4      ; X64, no parity, 1 stop bit
+    sio2_write_config SIOB_C, $05, $EA      ; dtr enable, 8 bits, tx enable, rts
+    ret
+
