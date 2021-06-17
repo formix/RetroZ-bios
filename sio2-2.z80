@@ -1,9 +1,9 @@
 
 
-SIOA_C      EQU     $00		; SIO A control port
-SIOA		EQU     $01		; SIO A data port
-SIOB_C      EQU     $02		; SIO B control port
-SIOB        EQU     $03		; SIO B data port
+SIOA_C      EQU     $00                     ; SIO A control port
+SIOA        EQU     $01                     ; SIO A data port
+SIOB_C      EQU     $02                     ; SIO B control port
+SIOB        EQU     $03                     ; SIO B data port
 
 
     macro sio2_write_config     &port, &register, &value
@@ -20,20 +20,61 @@ SIOB        EQU     $03		; SIO B data port
     endm
 
 
-sio2_init_portA:
+#data       _DEVICE_INT_VECTOR
+    DEFS    RX_CHA_AVAILABLE_INT, 2
+    DEFS    SPEC_RX_CONDITION_INT, 2
+
+
+sio2_init:
+    ; PortA
     sio2_write_config SIOA_C, $00, $18      ; Reset port A
     sio2_write_config SIOA_C, $01, $00      ; no interrupt on recv char
     sio2_write_config SIOA_C, $03, $E1      ; 8 bits, auto enable, rcv enable
     sio2_write_config SIOA_C, $04, $C4      ; X64, no parity, 1 stop bit
     sio2_write_config SIOA_C, $05, $EA      ; dtr enable, 8 bits, tx enable, rts
-    ret
 
-sio2_init_portB:
+    ; PortB
     sio2_write_config SIOB_C, $00, $18      ; Reset port A
     sio2_write_config SIOB_C, $01, $18      ; interrupt on all recv chararters
     sio2_write_config SIOB_C, $02, $0C      ; Sets the interrupt vector address
     sio2_write_config SIOB_C, $03, $E1      ; 8 bits, auto enable, rcv enable
     sio2_write_config SIOB_C, $04, $C4      ; X64, no parity, 1 stop bit
     sio2_write_config SIOB_C, $05, $EA      ; dtr enable, 8 bits, tx enable, rts
+
+    ; Interrupt initialization
+    ld hl,RX_CHA_AVAILABLE                  ; Load the handling subroutine into hl
+    ld (RX_CHA_AVAILABLE_INT),hl            ; Save it into the matching interrupt
+    ld hl,SPEC_RX_CONDITION                 ; Load the handling subroutine into hl
+    ld (SPEC_RX_CONDITION_INT),hl           ; Save it into the matching interrupt
+
+    ; Initialize the interrupt page register
+    ld a,$80                                ; Sets the page at 32k (first ram page)
+    ld i,a                                  ; Sets the interrupt page
+    im 2                                    ; Sets the processor in vectored interrupt mode
+    ei                                      ; Enable interrupts
+
     ret
 
+
+; Saves all registers, read the typed character and call an extern subroutine
+; called KEY_PRESSED to handle the key.
+RX_CHA_AVAILABLE:
+    di
+    ex af,af'           ;backup AF
+    exx
+WAIT_RX:
+    sub A               ;Clears A
+    out (SIOA_C),a      ;Select RR0
+    in  a,(SIOA_C)      ;Read RR0
+    bit 0,a             ;Check if character is available
+    jr  z,WAIT_RX       ;Character not recieved yet, check again
+    in  A,(SIOA)        ; A holds recieved character
+    call KEY_PRESSED    ; do something with the character
+    exx
+    ex af,af'
+    ei
+    reti
+
+
+SPEC_RX_CONDITION:
+    jp $0000
