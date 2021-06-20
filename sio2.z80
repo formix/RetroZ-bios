@@ -20,9 +20,16 @@ SIOB        EQU     $03                     ; SIO B data port
     endm
 
 
+#define PORTB_BUF_PAGE  $81
+
 #data       _DEVICE_INT_VECTOR
     DEFS    RX_CHA_AVAILABLE_INT, 2
     DEFS    SPEC_RX_CONDITION_INT, 2
+
+
+#data       _BIOS_VARIABLES
+    DEFS    PORTB_BUF_SIZE, 1
+    DEFS    PORTB_BUF_START, 1
 
 
 sio2_init:
@@ -40,6 +47,12 @@ sio2_init:
     sio2_write_config SIOB_C, $03, $E1  ; 8 bits, auto enable, rcv enable
     sio2_write_config SIOB_C, $04, $C4  ; X64, no parity, 1 stop bit
     sio2_write_config SIOB_C, $05, $EA  ; dtr enable, 8 bits, tx enable, rts
+
+    ; PortB Buffer Initialization
+    sub a
+    ld (PORTB_BUF_SIZE),a
+    ld (PORTB_BUF_START),a
+
 
     ; Interrupt initialization
     ld hl,RX_CHA_AVAILABLE              ; Load the handling subroutine into hl
@@ -125,13 +138,21 @@ WAIT_RXA:
     sub a                               ;Clears 'a'
     out (SIOA_C),a                      ;Select RR0
     in a,(SIOA_C)                       ;Read RR0
-    bit 0,a                             ;Check if character is available in a
+    bit 0,a                             ;Check if character is available in port A
     jr z,WAIT_RXA                       ;Character not recieved yet, check again
     in a,(SIOA)                         ;'a' holds recieved character
     call KEY_PRESSED                    ;Do something with the character
 
-    
+    ; TODO: input port B into the buffer
+WAIT_RXA_READ:
+    sub a
+    out (SIOB_C),a
+    in a, (SIOB_C)
+    bit 0,a                             ;Check if character is available in port B
+    jr z, WAIT_RXA_END
 
+
+WAIT_RXA_END:
     pop af
     ei
     reti
